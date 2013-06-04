@@ -4764,7 +4764,9 @@
 				<div id="papercommands" class="commands">
 					<span><label id="paperlabelpagestogenerate">Pages to generate:</label> <input type="text" id="paperlimit" /></span>
 					<span><input type="button" id="papergenerate" value="Generate" onclick="ninja.wallets.paperwallet.build(document.getElementById('paperlimit').value * 1);" /></span>
-					<span class="print"><input type="button" name="print" value="Print" id="paperprint" onclick="window.print();" /></span>
+					<span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span>
+					<span><label id="paperlabelhorizontaloffset">Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span>
+					<span class="print"><input type="button" name="print" value="Print" id="paperprint" onclick="ninja.print();" /></span>
 				</div>
 				<div id="paperkeyarea"></div>
 			</div>
@@ -5127,6 +5129,30 @@
 				ninja.qrCode.showQrCode(keyValuePair);
 				document.getElementById("keyarea" + idPostFix).style.display = "block";
 			}
+		};
+	</script>
+
+	<script type="text/javascript">
+		ninja.print = function () {
+			var style = document.getElementById("customprintstyle");
+			if (!style) {
+				var style = document.createElement("style");
+				style.setAttribute("id", "customprintstyle");
+				style.type = "text/css";
+				var head = document.getElementsByTagName("head")[0];
+				head.appendChild(style);
+			}
+
+			while (style.firstChild) style.removeChild(style.firstChild);
+
+			var offsetx = -parseInt(document.getElementById("paperhorizontaloffset").value, 10);
+			var offsety = -parseInt(document.getElementById("paperverticaloffset").value, 10);
+			var css = '@media print { body { margin-top: '+offsety+'mm; margin-left: '+offsetx+'mm; } }';
+
+			if (style.styleSheet) style.styleSheet.cssText = css;
+			else style.appendChild(document.createTextNode(css));
+
+			window.print();
 		};
 	</script>
 
