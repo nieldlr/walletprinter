@@ -5103,7 +5103,7 @@
 					if(i == 1) alias.push(colors[Math.round(index/(58/24))]);
 					if(i == 2) alias.push(animals[Math.round(index/(58/35))]);
 				}
-				return {full:alias[0] + " " + alias[1] + " " + alias[2], short:alias[0].substring(0,1)+alias[1].substring(0,1)+alias[2].substring(0,1)};
+				return alias;
 			},
 
 			toggleAlias: function(){
@@ -5154,6 +5154,8 @@
 
 			showWallet: function (idPostFix, bitcoinAddress, privateKeyWif, alias) {
 				var addressPrefix = bitcoinAddress.substr(0, 7);
+				var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
+				var alias_short = alias[0].substring(0,1)+alias[1].substring(0,1)+alias[2].substring(0,1);
 
 				// Assign address prefixes to elements
 				var elements = document.getElementsByClassName("btcaddressprefix" + idPostFix);
@@ -5163,7 +5165,7 @@
 
 				var elements = document.getElementsByClassName("aliasprefix" + idPostFix);
 				for (var i = 0; i < elements.length; i++) {
-					elements[i].innerHTML = alias.short + ": ";
+					elements[i].innerHTML = alias_short + ": ";
 				}
 
 				// Assign addresses to elements
@@ -5174,11 +5176,11 @@
 
 				var elements = document.getElementsByClassName("alias" + idPostFix);
 				for (var i = 0; i < elements.length; i++) {
-					elements[i].innerHTML = alias.full + ": ";
+					elements[i].innerHTML = alias_full + ": ";
 				}
 
 				var keyValuePair = {};
-				keyValuePair["qrcode_public" + idPostFix] = bitcoinAddress;
+				keyValuePair["qrcode_public" + idPostFix] = "bitcoin:"+bitcoinAddress+"?label="+alias[0]+alias[1]+alias[2];
 				keyValuePair["qrcode_private" + idPostFix] = privateKeyWif;
 				ninja.qrCode.showQrCode(keyValuePair);
 				document.getElementById("keyarea" + idPostFix).style.display = "block";
