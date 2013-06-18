@@ -4575,6 +4575,10 @@
 				float:left;
 				margin:0 55px 0 0;
 			}
+
+			input[type="number"]{
+				width: 75px;
+			}
 			
 			input[type="text"]{
 				border:1px solid #c4c4c4;
@@ -4660,7 +4664,7 @@
 				font-size:0.8em;
 				margin-bottom:10px;
 			}
-			.pubaddressprefix span{
+			.pubaddressprefix{
 				display:block;
 				border-radius:5px;
 				line-height:1.5;
@@ -4764,6 +4768,7 @@
 				<div id="papercommands" class="commands">
 					<span><label id="paperlabelpagestogenerate">Pages to generate:</label> <input type="text" id="paperlimit" /></span>
 					<span><input type="button" id="papergenerate" value="Generate" onclick="ninja.wallets.paperwallet.build(document.getElementById('paperlimit').value * 1);" /></span>
+					<span><label id="paperlabelaliasoption">Show Aliases</label><input type="checkbox" id="papergeneratealias" onchange="ninja.wallets.paperwallet.toggleAlias()" checked="checked"/></span>
 					<span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span>
 					<span><label id="paperlabelhorizontaloffset">Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span>
 					<span class="print"><input type="button" name="print" value="Print" id="paperprint" onclick="ninja.print();" /></span>
@@ -5031,6 +5036,7 @@
 			count: 0,
 			numPages: 1,
 			pageBreakAt: 4, // number of notes per page
+			show_alias: true, // variable to show alias or not
 
 			build: function (numPages) {
 				if (numPages < 1) numPages = 1;
@@ -5079,8 +5085,12 @@
 			},
 
 			generateAlias: function(bitcoinAddress){
+				var adjectives = ['ADORABLE', 'AGILE', 'BOSSY', 'CANDID', 'CLEVER', 'COLD', 'COLORFUL', 'CUDDLY', 'CURIOUS', 'CUTE', 'DEADLY', 'DOMESTIC', 'DOMINANT', 'FAST', 'FEISTY', 'FIERCE', 'FLUFFY', 'FRIENDLY', 'FURRY', 'FUZZY', 'GRUMPY', 'HAIRY', 'HEAVY', 'JEALOUS', 'LARGE', 'LAZY', 'LOUD', 'LOVABLE', 'LOVING', 'MEAN', 'MESSY', 'NOISY', 'NOSY', 'PICKY', 'PLAYFUL', 'QUICK', 'ROUGH', 'SASSY', 'SCALY', 'SHORT', 'SHY', 'SLIMY', 'SLOW', 'SMALL', 'SMART', 'SMELLY', 'SOFT', 'SPIKEY', 'STINKY', 'STRONG', 'STUBBORN', 'TALL', 'TAME', 'TENACIOUS', 'TINY', 'VICIOUS', 'WARM', 'WILD'];
+
 				var colors = ['RED', 'GREEN', 'BLUE', 'PURPLE', 'WHITE', 'BLACK', 'YELLOW', 'ORANGE', 'CYAN', 'MAGENTA', 'GRAY', 'SILVER', 'MAROON', 'VIOLET', 'BROWN', 'GOLD', 'PINK', 'AUBURN', 'TEAL', 'BIEGE', 'NAVY', 'LIME', 'SCARLET', 'JADE', 'PEACH'];
+
 				var animals = ['LION', 'GIRAFFE', 'ELEPHANT', 'MONKEY', 'CAT', 'BIRD', 'DOLPHIN', 'COW', 'WALRUS', 'WHALE', 'RHINO', 'CHEETAH', 'LEOPARD', 'LLAMA', 'KIWI', 'CHICKEN', 'DUCK', 'ALLIGATOR', 'BEAR', 'CAMEL', 'COBRA', 'CROW', 'EEL', 'HAMSTER', 'EAGLE', 'HORSE', 'DONKEY', 'KANGAROO', 'LOBSTER', 'RAT', 'MOUSE', 'MEERKAT', 'OWL', 'PIG', 'RABBIT', 'FERRET'];
+
 				var base58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 				var alias_seed = bitcoinAddress.substring(1,4);
 				var alias = [];
@@ -5089,14 +5099,26 @@
 				for(; i<alias_seed.length; i++){
 					var character = alias_seed.substr(i, 1);
 					var index = base58.indexOf(character);
-					if(i == alias_seed.length-1) {
-						alias.push(animals[Math.round(index/(58/35))]);
-					}
-					else{
-						alias.push(colors[Math.round(index/(58/24))]);
-					}
+					if(i == 0) alias.push(adjectives[(Math.round(index))]);
+					if(i == 1) alias.push(colors[Math.round(index/(58/24))]);
+					if(i == 2) alias.push(animals[Math.round(index/(58/35))]);
 				}
 				return {full:alias[0] + " " + alias[1] + " " + alias[2], short:alias[0].substring(0,1)+alias[1].substring(0,1)+alias[2].substring(0,1)};
+			},
+
+			toggleAlias: function(){
+				ninja.wallets.paperwallet.show_alias = ninja.wallets.paperwallet.show_alias ? false : true;
+				var elements = document.getElementsByClassName('alias');
+				for(var i = 0; i < elements.length; i++){
+					if(ninja.wallets.paperwallet.show_alias) elements[i].style.display = "inline";
+					else elements[i].style.display = "none";
+				}
+
+				var elements = document.getElementsByClassName('aliasprefix');
+				for(var i = 0; i < elements.length; i++){
+					if(ninja.wallets.paperwallet.show_alias) elements[i].style.display = "inline";
+					else elements[i].style.display = "none";
+				}
 			},
 
 			templateHtml: function (i) {
@@ -5106,7 +5128,7 @@
 									"<div class='qrcode_public" + i + " qrcode_public'></div>" +
 									"<div class='pubaddress'>" +
 										"<span class='notes'>Bitcoin address: </span>" +
-										"<span class='output btcaddress" + i + "'></span>" +
+										"<span class='output alias alias" + i + "'></span><span class='output btcaddress" + i + "'></span>" +
 									"</div>" +
 									"<div class='pubaddressprefix'>" +
 										"<span class='output btcaddressprefix" + i + "'></span>" +
@@ -5120,7 +5142,7 @@
 								"<div class='public'>" +
 									"<div class='qrcode_public" + i + " qrcode_public'></div>" +
 									"<div class='pubaddressprefix'>" +
-										"<span class='output btcaddressprefix" + i + "'></span>" +
+										"<span class='output aliasprefix aliasprefix" + i + "'></span><span class='output btcaddressprefix" + i + "'></span>" +
 									"</div>" +
 								"</div>" +
 								"<div class='private'>" +
@@ -5136,13 +5158,23 @@
 				// Assign address prefixes to elements
 				var elements = document.getElementsByClassName("btcaddressprefix" + idPostFix);
 				for (var i = 0; i < elements.length; i++) {
-					elements[i].innerHTML = alias.short + ": " + addressPrefix;
+					elements[i].innerHTML = addressPrefix;
+				}
+
+				var elements = document.getElementsByClassName("aliasprefix" + idPostFix);
+				for (var i = 0; i < elements.length; i++) {
+					elements[i].innerHTML = alias.short + ": ";
 				}
 
 				// Assign addresses to elements
 				var elements = document.getElementsByClassName("btcaddress" + idPostFix);
 				for (var i = 0; i < elements.length; i++) {
-					elements[i].innerHTML = alias.full + ": " + bitcoinAddress;
+					elements[i].innerHTML = bitcoinAddress;
+				}
+
+				var elements = document.getElementsByClassName("alias" + idPostFix);
+				for (var i = 0; i < elements.length; i++) {
+					elements[i].innerHTML = alias.full + ": ";
 				}
 
 				var keyValuePair = {};
