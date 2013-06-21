@@ -4585,7 +4585,8 @@
 				border-radius:5px;
 				height:22px;
 				line-height:22px;
-				outline:none!important;
+				outline:none!important; 
+				width: 50px;
 			}
 			input[type="button"]{
 				overflow:hidden;
@@ -4623,8 +4624,7 @@
 			}
 
 			.qrcode_public { width: 66px; height: 66px; }
-			.qrcode_private { width: 82px; height: 82px; }
-			
+			.qrcode_private { width: 82px; height: 82px; display: none; }
 			
 			.keyarea{
 				padding-bottom:25px;
@@ -4720,6 +4720,7 @@
 				position: absolute; right: 2.0in; top: 1.3in;
 				border: 0; padding: 0.08in; margin: 0;
 				width: 0.84in; height: 0.84in;
+				display: block;
 			}
 			#paperarea .keyarea .note .pubaddress {
 				position: absolute; left: 1.5in; top: 0.185in;
@@ -4738,6 +4739,7 @@
 				position: absolute; right: 0.1875in; top: 1.3in;
 				border: 0; padding: 0.08in; margin: 0;
 				width: 0.84in; height: 0.84in;
+				display: block;
 			}
 			#paperarea .keyarea .stub .pubaddressprefix {
 				position: absolute; left: 5.937in; top: 1.185in;
@@ -4772,6 +4774,7 @@
 					<span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span>
 					<span><label id="paperlabelhorizontaloffset">Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span>
 					<span class="print"><input type="button" name="print" value="Print" id="paperprint" onclick="ninja.print();" /></span>
+					<span><input type="button" onclick="ninja.wallets.paperwallet.exportToCSV()" value="Export Public Keys" /></span>
 				</div>
 				<div id="paperkeyarea"></div>
 			</div>
@@ -5121,6 +5124,21 @@
 				}
 			},
 
+			exportToCSV: function(){
+				var addresses = document.getElementsByClassName('pubaddress');
+				var csvContent = "data:text/csv;charset=utf-8,";
+				var csv = 'label,public address';
+				var i=0;
+				for(; i < addresses.length; i++){
+					var alias = addresses[i].getElementsByClassName('alias')[0].innerHTML;
+					alias = alias.substring(0, alias.length-2);
+					var address = addresses[i].getElementsByClassName('btcaddress')[0].innerHTML;
+					csv = csv +'\n'+ alias + "," + address;
+				}
+				var encoded = encodeURI(csvContent+csv);
+				window.open(encoded);
+			},
+
 			templateHtml: function (i) {
 				var walletHtml =
 							"<div class='note'>" +
@@ -5128,7 +5146,7 @@
 									"<div class='qrcode_public" + i + " qrcode_public'></div>" +
 									"<div class='pubaddress'>" +
 										"<span class='notes'>Bitcoin address: </span>" +
-										"<span class='output alias alias" + i + "'></span><span class='output btcaddress" + i + "'></span>" +
+										"<span class='output alias alias" + i + "'></span><span class='output btcaddress btcaddress" + i + "'></span>" +
 									"</div>" +
 									"<div class='pubaddressprefix'>" +
 										"<span class='output btcaddressprefix" + i + "'></span>" +
