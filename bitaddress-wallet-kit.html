@@ -4819,7 +4819,6 @@
 					<span class="print"><input type="button" name="print" value="Print" id="paperprint" onclick="ninja.print();" /></span>
 					<span><input type="button" onclick="ninja.wallets.paperwallet.exportToCSV()" value="Export Public Keys" /></span>
 				</div>
-				
 				<div id="paperkeyarea"></div>
 			</div>
 		</div>
@@ -5166,8 +5165,7 @@
 				if(ninja.wallets.paperwallet.remaining == 0) ninja.wallets.paperwallet.validateKeys();
 			},
 
-			// generate bitcoin address, private key, QR Code and update information in the HTML
-			// idPostFix: 1, 2, 3, etc.
+			// Generate addresses and private keys
 			generateNewWallet: function (idPostFix) {
 				var key = new Bitcoin.ECKey(false);
 				ninja.wallets.paperwallet.wallet_details[idPostFix] = {
@@ -5297,7 +5295,6 @@
 				}
 
 				//Check for errors and update page accordingly
-	
 				var i = 1;
 				for(; i < keys.length+1; i++){
 					if(keypairs[i].private_key.error){
