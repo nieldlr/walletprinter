@@ -4559,7 +4559,6 @@
 			#paperkeyarea{
 				clear:both;
 				padding-top:80px;
-				
 			}
 			#generate{
 				border-radius:10px;
@@ -4570,6 +4569,53 @@
 				float:left;
 				padding:5px 20px;
 				font-size:13px;
+			}
+
+			#paperwalletdetailsarea{
+				margin-top: 75px;
+			}
+			#paperwalletdetailskeyarea{
+				padding: 15px;
+				border: 1px solid #aaa;
+				border-radius:5px;
+			}
+			#paperwalletdetailscommands{
+				display: none;
+				margin-bottom: 10px;
+			}
+			#paperwalletdetailscolumns{
+				display: none;
+			}
+			.aliasdetailcolumn{
+				width: 255px;
+				display: inline-block;
+			}
+			.aliasdetail{
+				font-size: 0.9em;
+				width: 255px;
+				display: inline-block;
+			}
+			.addressdetailcolumn{
+				width: 325px;
+				display: inline-block;
+			}
+			.addressdetail{
+				font-size: 0.8em;
+				width: 325px;
+				display: inline-block;
+			}
+			.privatekeydetailcolumn{
+				width: 300px;
+				display: inline-block;
+			}
+			.privatekeydetail{
+				font-size: 0.9em;
+				width: 300px;
+				display: inline-block;
+			}
+			.errors{
+				margin: 5px 0px 5px 0px;
+				color: red;
 			}
 			.logo{
 				float:left;
@@ -4618,9 +4664,8 @@
 				filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#2bc9ce', endColorstr='#2398a3',GradientType=0 ); /* IE6-9 */
 			}
 			#paperlabelpagestogenerate{
-				display:block;
+				display: inline-block;
 				font-size:0.8em;
-				margin-bottom:10px;
 			}
 
 			.qrcode_public { width: 66px; height: 66px; }
@@ -4768,15 +4813,28 @@
 		<div id="wallets">
 			<div id="paperarea">
 				<div id="papercommands" class="commands">
-					<span><label id="paperlabelpagestogenerate">Pages to generate:</label> <input type="text" id="paperlimit" /></span>
-					<span><input type="button" id="papergenerate" value="Generate" onclick="ninja.wallets.paperwallet.build(document.getElementById('paperlimit').value * 1);" /></span>
 					<span><label id="paperlabelaliasoption">Show Aliases</label><input type="checkbox" id="papergeneratealias" onchange="ninja.wallets.paperwallet.toggleAlias()" checked="checked"/></span>
 					<span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span>
 					<span><label id="paperlabelhorizontaloffset">Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span>
 					<span class="print"><input type="button" name="print" value="Print" id="paperprint" onclick="ninja.print();" /></span>
 					<span><input type="button" onclick="ninja.wallets.paperwallet.exportToCSV()" value="Export Public Keys" /></span>
 				</div>
+				
 				<div id="paperkeyarea"></div>
+			</div>
+		</div>
+		<div id="paperwalletdetailsarea">
+			<div id="paperwalletdetailscommands">
+				<span><label id="paperlabelpagestogenerate">Pages to generate:</label> <input type="text" id="paperlimit" /></span>
+				<span><input type="button" id="papergenerate" value="Generate" onclick="ninja.wallets.paperwallet.startGeneration(document.getElementById('paperlimit').value * 1);" /></span>
+				<span id="paperwalletdetailsconfirm"><input type="button" value="Confirm Keys and Create Wallet" onclick="ninja.wallets.paperwallet.confirmAndCreate();" /></span>
+				<p style="font-size: 0.8em;">You can use your own private keys by replacing the generated keys in the private key input field.</p>
+			</div>
+			<div id="paperwalletdetailskeyarea">
+				<div id="paperwalletdetailscolumns">
+					<span class="aliasdetailcolumn">Alias</span><span class="addressdetailcolumn">Address</span><span class="privatekeydetailcolumn">Private Key</span>
+				</div>
+				<div id="paperwalletdetailskeys"></div>
 			</div>
 		</div>
 	</div>
@@ -4904,7 +4962,8 @@
 					ninja.wallets.paperwallet.open();
 					// UI
 					document.getElementById("generate").style.display = "none";
-					document.getElementById("wallets").style.display = "block";
+					document.getElementById("paperwalletdetailscommands").style.display = 'block';
+					document.getElementById("paperwalletdetailscolumns").style.display = 'block';
 				}
 			},
 
@@ -5030,8 +5089,8 @@
 				var limitElement = document.getElementById("paperlimit");
 				limitElement.value = ninja.wallets.paperwallet.numPages;
 
-				if (document.getElementById("paperkeyarea").innerHTML == "") {
-					ninja.wallets.paperwallet.build(ninja.wallets.paperwallet.numPages);
+				if(document.getElementById("paperwalletdetailskeys").innerHTML == "") {
+					ninja.wallets.paperwallet.startGeneration(ninja.wallets.paperwallet.numPages);
 				}
 			},
 
@@ -5040,14 +5099,27 @@
 			numPages: 1,
 			pageBreakAt: 4, // number of notes per page
 			show_alias: true, // variable to show alias or not
+			wallet_details: [], // fill this with details for showWallet and export to CSV
+			invalid_keys: false, // variable to check if everything is good with keys
 
 			build: function (numPages) {
 				if (numPages < 1) numPages = 1;
 				ninja.wallets.paperwallet.numPages = numPages;
 				ninja.wallets.paperwallet.remaining = numPages * ninja.wallets.paperwallet.pageBreakAt;
 				ninja.wallets.paperwallet.count = 0;
+				document.getElementById("wallets").style.display = "block";
 				document.getElementById("paperkeyarea").innerHTML = "";
+				document.getElementById("paperwalletdetailsarea").style.display = "none";
 				setTimeout(ninja.wallets.paperwallet.batch, 0);
+			},
+
+			startGeneration: function(numPages){
+				if (numPages < 1) numPages = 1;
+				ninja.wallets.paperwallet.numPages = numPages;
+				ninja.wallets.paperwallet.remaining = numPages * ninja.wallets.paperwallet.pageBreakAt;
+				ninja.wallets.paperwallet.count = 0;
+				document.getElementById("paperwalletdetailskeys").innerHTML = "";
+				setTimeout(ninja.wallets.paperwallet.batchGenerate, 0);
 			},
 
 			batch: function () {
@@ -5071,20 +5143,39 @@
 						}
 					}
 					document.getElementById("paperkeyarea").appendChild(div);
-					ninja.wallets.paperwallet.generateNewWallet(i);
+					ninja.wallets.paperwallet.showWallet(i);
 					ninja.wallets.paperwallet.remaining--;
 					setTimeout(ninja.wallets.paperwallet.batch, 0);
 				}
+			},
+
+			batchGenerate: function(){
+				if(ninja.wallets.paperwallet.remaining > 0) {
+					var detail_area = document.getElementById("paperwalletdetailskeys");
+					ninja.wallets.paperwallet.count++;
+					var i = ninja.wallets.paperwallet.count;
+
+					var div = document.createElement('div');
+					div.innerHTML = ninja.wallets.paperwallet.templateWalletDetailsHtml(i);
+					detail_area.appendChild(div);
+
+					ninja.wallets.paperwallet.generateNewWallet(i);
+					ninja.wallets.paperwallet.remaining--;
+					setTimeout(ninja.wallets.paperwallet.batchGenerate, 0);
+				}
+				if(ninja.wallets.paperwallet.remaining == 0) ninja.wallets.paperwallet.validateKeys();
 			},
 
 			// generate bitcoin address, private key, QR Code and update information in the HTML
 			// idPostFix: 1, 2, 3, etc.
 			generateNewWallet: function (idPostFix) {
 				var key = new Bitcoin.ECKey(false);
-				var bitcoinAddress = key.getBitcoinAddress();
-				var privateKeyWif = key.getBitcoinWalletImportFormat();
-				var alias = ninja.wallets.paperwallet.generateAlias(bitcoinAddress);
-				ninja.wallets.paperwallet.showWallet(idPostFix, bitcoinAddress, privateKeyWif, alias);
+				ninja.wallets.paperwallet.wallet_details[idPostFix] = {
+					bitcoinAddress: key.getBitcoinAddress(),
+					privateKeyWif: key.getBitcoinWalletImportFormat(),
+					alias: ninja.wallets.paperwallet.generateAlias(key.getBitcoinAddress()),
+				}
+				ninja.wallets.paperwallet.showWalletDetails(idPostFix);
 			},
 
 			generateAlias: function(bitcoinAddress){
@@ -5139,6 +5230,109 @@
 				window.open(encoded);
 			},
 
+			showWalletDetails: function(idPostFix){
+				//Show Alias
+				var alias = ninja.wallets.paperwallet.wallet_details[idPostFix].alias;
+				var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
+				var elements = document.getElementsByClassName("aliasdetail" + idPostFix);
+				for (var i = 0; i < elements.length; i++) {
+					elements[i].innerHTML = alias_full + ": ";
+				}
+
+				//Show Bitcoin Address
+				var bitcoinAddress = ninja.wallets.paperwallet.wallet_details[idPostFix].bitcoinAddress;
+				var elements = document.getElementsByClassName("addressdetail" + idPostFix);
+				for (var i = 0; i < elements.length; i++) {
+					elements[i].innerHTML = bitcoinAddress;
+				}
+
+				//Show Private Key
+				var privateKeyWif = ninja.wallets.paperwallet.wallet_details[idPostFix].privateKeyWif;
+				var elements = document.getElementsByClassName("privatekeydetail" + idPostFix);
+				for (var i = 0; i < elements.length; i++) {
+					elements[i].value = privateKeyWif;
+				}
+			},
+
+			validateKeys: function(){
+				ninja.wallets.paperwallet.invalid_keys = false; //Assume everything is fine
+				var keypairs = [];
+
+				//Reset Errors
+				var reset_errors = document.getElementsByClassName('errors');
+				for(var i = 0; i < reset_errors.length; i++){
+					reset_errors[i].innerHTML = '';
+				}
+
+				//Get the keys from the inputs and validate keys.
+				var keys = document.getElementsByClassName('keypair');
+				var i = 1;
+				for(; i < keys.length+1; i++){
+					var div = document.getElementsByClassName('keypair'+i)[0];
+
+					keypairs[i] = {error: null};
+					keypairs[i].public_address = {string: div.getElementsByClassName('addressdetail'+i)[0].innerHTML, error: null};
+					keypairs[i].private_key = {string: div.getElementsByClassName('privatekeydetail'+i)[0].value, error: null};
+
+					if(!ninja.privateKey.isPrivateKey(keypairs[i].private_key.string)){
+						keypairs[i].private_key.error = 'Not a valid private key';
+						div.getElementsByClassName('addressdetail'+i)[0].innerHTML = "Invalid private key";
+						div.getElementsByClassName('aliasdetail'+i)[0].innerHTML = "Invalid private key";
+					}
+					else{
+						ninja.wallets.paperwallet.wallet_details[i].privateKeyWif = keypairs[i].private_key.string;
+						
+						var public_address_test = new Bitcoin.ECKey(keypairs[i].private_key.string).getBitcoinAddress();
+						ninja.wallets.paperwallet.wallet_details[i].bitcoinAddress = public_address_test;
+
+						if(public_address_test != keypairs[i].public_address.string){
+							div.getElementsByClassName('addressdetail'+i)[0].innerHTML = public_address_test;
+
+							var alias = ninja.wallets.paperwallet.generateAlias(public_address_test);
+							var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
+							div.getElementsByClassName('aliasdetail'+i)[0].innerHTML = alias_full;
+							ninja.wallets.paperwallet.wallet_details[i].alias = alias;
+						}
+					}
+				}
+
+				//Check for errors and update page accordingly
+	
+				var i = 1;
+				for(; i < keys.length+1; i++){
+					if(keypairs[i].private_key.error){
+						ninja.wallets.paperwallet.invalid_keys = true;
+						document.getElementsByClassName('keypair'+i)[0].getElementsByClassName('errors')[0].innerHTML = " [ ! ]";
+						document.getElementsByClassName('keypair'+i)[0].getElementsByClassName('errors')[0].style.color = "red";
+					}
+					else{
+						document.getElementsByClassName('keypair'+i)[0].getElementsByClassName('errors')[0].innerHTML = " [ ✓ ]";
+						document.getElementsByClassName('keypair'+i)[0].getElementsByClassName('errors')[0].style.color = 'green';
+					}
+				}
+			},
+
+			confirmAndCreate: function(){
+				ninja.wallets.paperwallet.validateKeys();
+				if(!ninja.wallets.paperwallet.invalid_keys){
+					ninja.wallets.paperwallet.build(ninja.wallets.paperwallet.numPages);
+				}
+				else{
+					alert('One or more private keys are invalid. Make sure you entered them correctly and press confirm again.');
+				}
+			},
+
+			templateWalletDetailsHtml: function(i){
+				var walletdetailsHtml =
+					"<div class='keypair keypair"+ i + "'>" +
+						"<span class='aliasdetail aliasdetail"+ i + "'></span><span class='addressdetail addressdetail"+ i +"'></span>"+
+						"<input type='password' class='privatekeydetail privatekeydetail"+ i +"'"+
+						" onkeypress='ninja.wallets.paperwallet.validateKeys("+i+")' onblur='ninja.wallets.paperwallet.validateKeys("+i+")'/>" +
+						"<span class='errors'></span>" +
+					"</div>";
+				return walletdetailsHtml;
+			},
+
 			templateHtml: function (i) {
 				var walletHtml =
 							"<div class='note'>" +
@@ -5170,7 +5364,11 @@
 				return walletHtml;
 			},
 
-			showWallet: function (idPostFix, bitcoinAddress, privateKeyWif, alias) {
+			showWallet: function (idPostFix) {
+				var alias = ninja.wallets.paperwallet.wallet_details[idPostFix].alias;
+				var bitcoinAddress = ninja.wallets.paperwallet.wallet_details[idPostFix].bitcoinAddress;
+				var privateKeyWif = ninja.wallets.paperwallet.wallet_details[idPostFix].privateKeyWif;
+
 				var addressPrefix = bitcoinAddress.substr(0, 7);
 				var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
 				var alias_short = alias[0].substring(0,1)+alias[1].substring(0,1)+alias[2].substring(0,1);
@@ -5672,9 +5870,6 @@
 		if (ninja.getQueryString()["unittests"] == "true" || ninja.getQueryString()["unittests"] == "1") {
 			ninja.unitTests.runTests();
 		}
-
-		// if users does not move mouse after random amount of time then generate the key anyway.
-		setTimeout(ninja.seeder.forceGenerate, ninja.seeder.seedLimit * 20);
 	</script>
 	<footer class="footer">
 		<div class="footer_inner">
