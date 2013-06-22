@@ -5179,9 +5179,9 @@
 			generateAlias: function(bitcoinAddress){
 				var adjectives = ['ADORABLE', 'AGILE', 'BOSSY', 'CANDID', 'CLEVER', 'COLD', 'COLORFUL', 'CUDDLY', 'CURIOUS', 'CUTE', 'DEADLY', 'DOMESTIC', 'DOMINANT', 'FAST', 'FEISTY', 'FIERCE', 'FLUFFY', 'FRIENDLY', 'FURRY', 'FUZZY', 'GRUMPY', 'HAIRY', 'HEAVY', 'JEALOUS', 'LARGE', 'LAZY', 'LOUD', 'LOVABLE', 'LOVING', 'MEAN', 'MESSY', 'NOISY', 'NOSY', 'PICKY', 'PLAYFUL', 'QUICK', 'ROUGH', 'SASSY', 'SCALY', 'SHORT', 'SHY', 'SLIMY', 'SLOW', 'SMALL', 'SMART', 'SMELLY', 'SOFT', 'SPIKEY', 'STINKY', 'STRONG', 'STUBBORN', 'TALL', 'TAME', 'TENACIOUS', 'TINY', 'VICIOUS', 'WARM', 'WILD'];
 
-				var colors = ['RED', 'GREEN', 'BLUE', 'PURPLE', 'WHITE', 'BLACK', 'YELLOW', 'ORANGE', 'CYAN', 'MAGENTA', 'GRAY', 'SILVER', 'MAROON', 'VIOLET', 'BROWN', 'GOLD', 'PINK', 'AUBURN', 'TEAL', 'BIEGE', 'NAVY', 'LIME', 'SCARLET', 'JADE', 'PEACH'];
+                var colors = ['AMBER', 'AMETHYST', 'AQUA', 'AZURE', 'BLACK', 'BLUE', 'BRONZE', 'BURGUNDY', 'CANARY', 'CHESTNUT', 'CHOCOLATE', 'CHROME', 'COBALT', 'COPPER', 'CREAM', 'CRIMSON', 'CYAN', 'DRAB', 'DULL', 'EBONY', 'EMERALD', 'FUCHSIA', 'GOLD', 'GREEN', 'HENNA', 'INDIGO', 'IVORY', 'JADE', 'KHAKI', 'LAVENDER', 'LEMON', 'LILAC', 'LIME', 'MAGENTA', 'MAHOGANY', 'MAROON', 'MAUVE', 'MUSTARD', 'NAVY', 'OLIVE', 'ORANGE', 'PEACH', 'PINK', 'PURPLE', 'RED', 'ROSE', 'RUBY', 'RUST', 'SAFFRON', 'SAPPHIRE', 'SCARLET', 'SILVER', 'TAN', 'TOPAZ', 'TURQUOISE', 'VIOLET', 'WHITE', 'YELLOW'];
 
-				var animals = ['LION', 'GIRAFFE', 'ELEPHANT', 'MONKEY', 'CAT', 'BIRD', 'DOLPHIN', 'COW', 'WALRUS', 'WHALE', 'RHINO', 'CHEETAH', 'LEOPARD', 'LLAMA', 'KIWI', 'CHICKEN', 'DUCK', 'ALLIGATOR', 'BEAR', 'CAMEL', 'COBRA', 'CROW', 'EEL', 'HAMSTER', 'EAGLE', 'HORSE', 'DONKEY', 'KANGAROO', 'LOBSTER', 'RAT', 'MOUSE', 'MEERKAT', 'OWL', 'PIG', 'RABBIT', 'FERRET'];
+				var animals = ['ALLIGATOR', 'ANACONDA', 'ANTELOPE', 'BEAR', 'BEAVER', 'BEETLE', 'BIRD', 'CAMEL', 'CAT', 'CHICKEN', 'COBRA', 'CROW', 'DOLPHIN', 'DONKEY', 'DUCK', 'EAGLE', 'EEL', 'ELEPHANT', 'FERRET', 'FLEA', 'FOX', 'FROG', 'GIRAFFE', 'GOAT', 'GORILLA', 'HAMSTER', 'HIPPO', 'HORSE', 'HYENA', 'IGUANA', 'JAGUAR', 'KANGAROO', 'KIWI', 'LEOPARD', 'LION', 'LOBSTER', 'MEERKAT', 'MONKEY', 'MOUSE', 'NARWHAL', 'OCTOPUS', 'ORCA', 'OWL', 'PELICAN', 'PENGUIN', 'PIG', 'QUAIL', 'RABBIT', 'RAT', 'RHINO', 'SCORPION', 'SEAL', 'TIGER', 'TUNA', 'VIPER', 'WALRUS', 'WHALE', 'ZEBRA'];
 
 				var base58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 				var alias_seed = bitcoinAddress.substring(1,4);
@@ -5191,9 +5191,9 @@
 				for(; i<alias_seed.length; i++){
 					var character = alias_seed.substr(i, 1);
 					var index = base58.indexOf(character);
-					if(i == 0) alias.push(adjectives[(Math.round(index))]);
-					if(i == 1) alias.push(colors[Math.round(index/(58/24))]);
-					if(i == 2) alias.push(animals[Math.round(index/(58/35))]);
+					if(i == 0) alias.push(adjectives[Math.round(index)]);
+					if(i == 1) alias.push(colors[Math.round(index)]);
+					if(i == 2) alias.push(animals[Math.round(index)]);
 				}
 				return alias;
 			},
