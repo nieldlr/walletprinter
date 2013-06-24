@@ -4586,6 +4586,29 @@
 			#paperwalletdetailscolumns{
 				display: none;
 			}
+
+			#paperwalletdesignsarea{
+				margin-top: 10px;
+			}
+
+			.wallet-thumbnail{
+				display: block;
+				width: 450px;
+				height: 150px;
+				margin: 5px 10px 0px 0px;
+				float: left;
+				padding: 10px;
+			}
+
+			.wallet-thumbnail-selected{
+				border-left: 2px dotted green;
+				border-right: 2px dotted green;
+				box-shadow: 0.02em 0.02em 0.02em green;
+			}
+
+			.wallet-background{
+				display: none;
+			}
 			.aliasdetailcolumn{
 				width: 255px;
 				display: inline-block;
@@ -4676,6 +4699,7 @@
 				margin-bottom:25px;
 				border-bottom:1px dotted #c4c4c4;
 			}
+
 			.keyarea:last-child{
 				border:none;
 				margin-bottom:0;
@@ -4727,8 +4751,6 @@
 				border:2px solid #fff;
 				box-shadow:0 1px 5px #c4c4c4;
 			}
-			
-			
 		}
 
 		@page { margin: 0.5in; }
@@ -4736,16 +4758,21 @@
 		@media print
 		{
 			.logo,.footer,
-			.commands { display: none; }
+			.commands, #paperwalletdetailsarea { display: none; }
 
-			body, div { margin: 0; padding: 0; }
+			body, div { margin: 0; padding: 0; -webkit-print-color-adjust: exact;}
 			#main { margin: 0; padding: 0; width: 100%; }
+			#wallets{ display: block; }
 
 			#paperarea .keyarea {
 				position: relative;
 				width: 7.5in; height: 2.5in;
 				margin: 0; padding: 0; border: 0;
 				font-size: 0.1in; line-height: 0.15in;
+			}
+
+			#paperarea .wallet-background{
+				width: 7.5in;
 			}
 
 			#paperarea .first {
@@ -4826,7 +4853,7 @@
 			<div id="paperwalletdetailscommands">
 				<span><label id="paperlabelpagestogenerate">Pages to generate:</label> <input type="text" id="paperlimit" /></span>
 				<span><input type="button" id="papergenerate" value="Generate" onclick="ninja.wallets.paperwallet.startGeneration(document.getElementById('paperlimit').value * 1);" /></span>
-				<span id="paperwalletdetailsconfirm"><input type="button" value="Confirm Keys and Create Wallet" onclick="ninja.wallets.paperwallet.confirmAndCreate();" /></span>
+				<span id="paperwalletdetailsconfirm"><input type="button" value="Confirm Keys and Print Wallet" onclick="ninja.wallets.paperwallet.confirmAndCreate();" /></span>
 				<p style="font-size: 0.8em;">You can use your own private keys by replacing the generated keys in the private key input field.</p>
 			</div>
 			<div id="paperwalletdetailskeyarea">
@@ -4835,6 +4862,11 @@
 				</div>
 				<div id="paperwalletdetailskeys"></div>
 			</div>
+			<div id="paperwalletdesignsarea">
+				<p>Select a design for your paper wallet by clicking the notes below. The default option prints the wallet with no background design.</p>
+				<div id="paperwalletdesignoptions"></div>
+			</div>
+			<div style="clear:both;"></div>
 		</div>
 	</div>
 	
@@ -4959,10 +4991,6 @@
 				// seeding is over now we generate and display the address
 				if (ninja.seeder.seedCount == ninja.seeder.seedLimit) {
 					ninja.wallets.paperwallet.open();
-					// UI
-					document.getElementById("generate").style.display = "none";
-					document.getElementById("paperwalletdetailscommands").style.display = 'block';
-					document.getElementById("paperwalletdetailscolumns").style.display = 'block';
 				}
 			},
 
@@ -5085,11 +5113,20 @@
 	<script type="text/javascript">
 		ninja.wallets.paperwallet = {
 			open: function () {
+				//UI Changes
+				document.getElementById("generate").style.display = "none";
+				document.getElementById("paperwalletdetailscommands").style.display = 'block';
+				document.getElementById("paperwalletdetailscolumns").style.display = 'block';
+
 				var limitElement = document.getElementById("paperlimit");
 				limitElement.value = ninja.wallets.paperwallet.numPages;
 
 				if(document.getElementById("paperwalletdetailskeys").innerHTML == "") {
 					ninja.wallets.paperwallet.startGeneration(ninja.wallets.paperwallet.numPages);
+				}
+
+				if(document.getElementById("paperwalletdesignoptions").innerHTML == "") {
+					ninja.wallets.paperwallet.showDesigns();
 				}
 			},
 
@@ -5100,15 +5137,14 @@
 			show_alias: true, // variable to show alias or not
 			wallet_details: [], // fill this with details for showWallet and export to CSV
 			invalid_keys: false, // variable to check if everything is good with keys
+			wallet_design_id: 0,
 
 			build: function (numPages) {
 				if (numPages < 1) numPages = 1;
 				ninja.wallets.paperwallet.numPages = numPages;
 				ninja.wallets.paperwallet.remaining = numPages * ninja.wallets.paperwallet.pageBreakAt;
 				ninja.wallets.paperwallet.count = 0;
-				document.getElementById("wallets").style.display = "block";
 				document.getElementById("paperkeyarea").innerHTML = "";
-				document.getElementById("paperwalletdetailsarea").style.display = "none";
 				setTimeout(ninja.wallets.paperwallet.batch, 0);
 			},
 
@@ -5131,6 +5167,10 @@
 					div.setAttribute("id", "keyarea" + i);
 					div.innerHTML = ninja.wallets.paperwallet.templateHtml(i);
 					div.setAttribute("class", "keyarea");
+					img = document.createElement('img');
+					img.setAttribute("class", "wallet-background");
+					img.src = ninja.wallets.paperwallet.designs[ninja.wallets.paperwallet.wallet_design_id].source;
+					div.appendChild(img);
 
 					if (paperArea.innerHTML != "") {
 						// page break
@@ -5145,6 +5185,9 @@
 					ninja.wallets.paperwallet.showWallet(i);
 					ninja.wallets.paperwallet.remaining--;
 					setTimeout(ninja.wallets.paperwallet.batch, 0);
+				}
+				else{
+					ninja.print(); //When generation finishes
 				}
 			},
 
@@ -5319,6 +5362,35 @@
 				}
 			},
 
+			showDesigns: function(){
+				var designs = ninja.wallets.paperwallet.designs;
+				var walletsarea = document.getElementById('paperwalletdesignoptions');
+
+				for(var i=0; i < designs.length; i++){
+					var div = document.createElement('div');
+					if(designs[i].name == "Pre-printed"){
+						div.innerHTML = '<span class="wallet-thumbnail wallet-thumbnail-selected" onclick="ninja.wallets.paperwallet.selectDesign('+i+')">No background design</span>';
+					}
+					else{
+						div.innerHTML = '<span><img class="wallet-thumbnail" src='+ designs[i].source +' onclick="ninja.wallets.paperwallet.selectDesign('+i+')" /></span>';
+					}
+					walletsarea.appendChild(div);
+				}
+			},
+
+			selectDesign: function(id){
+				var elements = document.getElementsByClassName('wallet-thumbnail');
+				for(var i = 0; i < elements.length; i++){
+					if(i == id) {
+						document.getElementsByClassName('wallet-thumbnail')[i].setAttribute('class', "wallet-thumbnail wallet-thumbnail-selected");
+					}
+					else{
+						document.getElementsByClassName('wallet-thumbnail')[i].setAttribute('class', "wallet-thumbnail");
+					}
+				}
+				ninja.wallets.paperwallet.wallet_design_id = id;
+			},
+
 			templateWalletDetailsHtml: function(i){
 				var walletdetailsHtml =
 					"<div class='keypair keypair"+ i + "'>" +
@@ -5402,7 +5474,16 @@
 	</script>
 
 	<script type="text/javascript">
+		ninja.wallets.paperwallet.designs = [
+			{name: 'Pre-printed', source: ''},
+			{name: '75RTUGA', source: 'img/wallet_designs/75RTUGA.jpg'},
+			{name: 'MBesser', source: 'img/wallet_designs/pw1-01.png'}
+		];
+	</script>
+
+	<script type="text/javascript">
 		ninja.print = function () {
+
 			var style = document.getElementById("customprintstyle");
 			if (!style) {
 				var style = document.createElement("style");
