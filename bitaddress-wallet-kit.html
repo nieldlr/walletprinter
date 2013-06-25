@@ -4530,6 +4530,9 @@
 				font-family:Verdana, Geneva, Arial, Helvetica, sans-serif;
 				color:#313131;
 			}
+			p{
+				font-size: 0.8em;
+			}
 			#main{
 				min-height:500px;
 				width:996px;
@@ -4589,15 +4592,17 @@
 
 			#paperwalletdesignsarea{
 				margin-top: 10px;
+				display: none;
 			}
 
 			.wallet-thumbnail{
 				display: block;
-				width: 450px;
+				width: 465px;
 				height: 150px;
 				margin: 5px 10px 0px 0px;
 				float: left;
 				padding: 10px;
+				border: 1px solid #ccc;
 			}
 
 			.wallet-thumbnail-selected{
@@ -4863,7 +4868,10 @@
 				<div id="paperwalletdetailskeys"></div>
 			</div>
 			<div id="paperwalletdesignsarea">
-				<p>Select a design for your paper wallet by clicking the notes below. The default option prints the wallet with no background design.</p>
+				<p>Select a design for your paper wallet by clicking the notes below. The default option prints the wallet with no background.</p>
+				<p>Note: if you are using <strong>Firefox or Internet Explorer</strong>, you must change your browser print settings to allow for printing.</p>
+				<p>In Firefox: Page Setup -> Format & Options Tab under Options. Select "Print Background colours and images".</p>
+				<p>In IE: On the Tools menu, click Internet Options, and then click the Advanced tab. In the Settings box, under Printing, click to select the 'Print background colors and images' check box, and then click OK.</p>
 				<div id="paperwalletdesignoptions"></div>
 			</div>
 			<div style="clear:both;"></div>
@@ -5117,6 +5125,8 @@
 				document.getElementById("generate").style.display = "none";
 				document.getElementById("paperwalletdetailscommands").style.display = 'block';
 				document.getElementById("paperwalletdetailscolumns").style.display = 'block';
+				document.getElementById("paperwalletdesignoptions").style.display = 'block';
+				document.getElementById("paperwalletdesignsarea").style.display = 'block';
 
 				var limitElement = document.getElementById("paperlimit");
 				limitElement.value = ninja.wallets.paperwallet.numPages;
@@ -5369,7 +5379,7 @@
 				for(var i=0; i < designs.length; i++){
 					var div = document.createElement('div');
 					if(designs[i].name == "Pre-printed"){
-						div.innerHTML = '<span class="wallet-thumbnail wallet-thumbnail-selected" onclick="ninja.wallets.paperwallet.selectDesign('+i+')">No background design</span>';
+						div.innerHTML = '<span class="wallet-thumbnail wallet-thumbnail-selected wallet-thumbnail-no-design" onclick="ninja.wallets.paperwallet.selectDesign('+i+')">No background</span>';
 					}
 					else{
 						div.innerHTML = '<span><img class="wallet-thumbnail" src='+ designs[i].source +' onclick="ninja.wallets.paperwallet.selectDesign('+i+')" /></span>';
@@ -5477,7 +5487,10 @@
 		ninja.wallets.paperwallet.designs = [
 			{name: 'Pre-printed', source: ''},
 			{name: '75RTUGA', source: 'img/wallet_designs/75RTUGA.jpg'},
-			{name: 'MBesser', source: 'img/wallet_designs/pw1-01.png'}
+			{name: 'MBesser', source: 'img/wallet_designs/pw1-01.png'},
+			{name: 'Timbo-Green', source: 'img/wallet_designs/timbo-green.svg'},
+			{name: 'Timbo-Grey', source: 'img/wallet_designs/timbo-grey.svg'},
+			{name: 'Canton', source: 'img/wallet_designs/canton.jpg'}
 		];
 	</script>
 
