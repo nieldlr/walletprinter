@@ -4557,7 +4557,7 @@
 				text-decoration: none;
 			}
 			#papercommands{
-				float:right;
+
 			}
 			#paperkeyarea{
 				clear:both;
@@ -4844,21 +4844,17 @@
 		</div>
 		<div id="wallets">
 			<div id="paperarea">
-				<div id="papercommands" class="commands">
-					<span><label id="paperlabelaliasoption">Show Aliases</label><input type="checkbox" id="papergeneratealias" onchange="ninja.wallets.paperwallet.toggleAlias()" checked="checked"/></span>
-					<span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span>
-					<span><label id="paperlabelhorizontaloffset">Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span>
-					<span class="print"><input type="button" name="print" value="Print" id="paperprint" onclick="ninja.print();" /></span>
-					<span><input type="button" onclick="ninja.wallets.paperwallet.exportToCSV()" value="Export Public Keys" /></span>
-				</div>
 				<div id="paperkeyarea"></div>
 			</div>
 		</div>
 		<div id="paperwalletdetailsarea">
 			<div id="paperwalletdetailscommands">
-				<span><label id="paperlabelpagestogenerate">Pages to generate:</label> <input type="text" id="paperlimit" /></span>
-				<span><input type="button" id="papergenerate" value="Generate" onclick="ninja.wallets.paperwallet.startGeneration(document.getElementById('paperlimit').value * 1);" /></span>
-				<span id="paperwalletdetailsconfirm"><input type="button" value="Confirm Keys and Print Wallet" onclick="ninja.wallets.paperwallet.confirmAndCreate();" /></span>
+				<div id="papercommands" class="commands">
+					<span><label id="paperlabelpagestogenerate">Pages to generate:</label><input type="text" id="paperlimit" /></span>
+					<span><input type="button" id="papergenerate" value="Generate" onclick="ninja.wallets.paperwallet.startGeneration(document.getElementById('paperlimit').value * 1);" /></span>
+					<span><input type="button" onclick="ninja.wallets.paperwallet.exportToCSV()" value="Export Public Keys" /></span>
+					<span id="paperwalletdetailsconfirm"><input type="button" value="Confirm Keys and Print Wallet" onclick="ninja.wallets.paperwallet.confirmAndCreate();" /></span><br>
+				</div>
 				<p style="font-size: 0.8em;">You can use your own private keys by replacing the generated keys in the private key input field.</p>
 			</div>
 			<div id="paperwalletdetailskeyarea">
@@ -4869,9 +4865,13 @@
 			</div>
 			<div id="paperwalletdesignsarea">
 				<p>Select a design for your paper wallet by clicking the notes below. The default option prints the wallet with no background.</p>
-				<p>Note: if you are using <strong>Firefox or Internet Explorer</strong>, you must change your browser print settings to allow for printing.</p>
+				<p>Note: if you are using <strong>Firefox or Internet Explorer</strong>, you must change your browser print settings to allow for printing background images.</p>
 				<p>In Firefox: Page Setup -> Format & Options Tab under Options. Select "Print Background colours and images".</p>
 				<p>In IE: On the Tools menu, click Internet Options, and then click the Advanced tab. In the Settings box, under Printing, click to select the 'Print background colors and images' check box, and then click OK.</p>
+				<p><h2>Printing Options</h2></p>
+				<p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="ninja.wallets.paperwallet.toggleAlias()" checked="checked"/></span>
+					<span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span>
+					<span><label id="paperlabelhorizontaloffset">Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span></p>
 				<div id="paperwalletdesignoptions"></div>
 			</div>
 			<div style="clear:both;"></div>
