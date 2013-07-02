@@ -5224,16 +5224,17 @@
 			},
 
 			exportToCSV: function(){
-				var addresses = document.getElementsByClassName('pubaddress');
 				var csvContent = "data:text/csv;charset=utf-8,";
 				var csv = 'label,public address';
-				var i=0;
-				for(; i < addresses.length; i++){
-					var alias = addresses[i].getElementsByClassName('alias')[0].innerHTML;
-					alias = alias.substring(0, alias.length-2);
-					var address = addresses[i].getElementsByClassName('btcaddress')[0].innerHTML;
-					csv = csv +'\n'+ alias + "," + address;
+
+				for(var i = 1; i < ninja.wallets.paperwallet.wallet_details.length; i++){
+					console.log(i);
+					var alias = ninja.wallets.paperwallet.wallet_details[i].alias;
+					var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
+					var address = ninja.wallets.paperwallet.wallet_details[i].bitcoinAddress;
+					csv = csv +'\n'+ alias_full + "," + address;
 				}
+
 				var encoded = encodeURI(csvContent+csv);
 				window.open(encoded);
 			},
@@ -5680,7 +5681,7 @@
 										'<p>Note: if you are using <strong>Firefox or Internet Explorer</strong>, you must change your browser print settings to allow for printing background images.</p>' +
 										'<p>In Firefox: Page Setup -> Format & Options Tab under Options. Select "Print Background colours and images".</p>'+
 										'<p>In IE: On the Tools menu, click Internet Options, and then click the Advanced tab. In the Settings box, under Printing, click to select the "Print background colors and images" check box, and then click OK.</p></div>'+
-										'<div id="paperwalletprintcommands"><p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="ninja.wallets.paperwallet.toggleAlias()" checked="checked"/></span><br><span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span><span><label id="paperlabelhorizontaloffset"> Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span><div id="paperwalletdesignaligment"></div><div><input type="button" value="Print Wallet" onclick="ninja.wallets.paperwallet.build()" /></div></p></div>'+
+										'<div id="paperwalletprintcommands"><p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="ninja.wallets.paperwallet.toggleAlias()" checked="checked"/></span><br><span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span><span><label id="paperlabelhorizontaloffset"> Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span><div id="paperwalletdesignaligment"></div><div><input type="button" value="Print Wallet" onclick="ninja.wallets.paperwallet.build()" /><input type="button" value="Export Public Keys" onclick="ninja.wallets.paperwallet.exportToCSV()" /></div></p></div>'+
 										'<div id="paperwalletdesignoptions"></div>'+
 									'</div><div style="clear:both;">'+
 								'</div>',
