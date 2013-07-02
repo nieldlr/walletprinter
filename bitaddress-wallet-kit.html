@@ -4586,11 +4586,29 @@
 				margin-top: 10px;
 			}
 
+			#paperwalletdesignaligment{
+				margin: 10px 0px;
+			}
+
+			#paperwalletprintcommands{
+				width: 430px;
+				font-size: 0.8em;
+			}
+			#paperwalletdetailstext{
+				float: right;
+				width: 490px;
+			}
+
+			#barcode-box {
+        border: 1px solid #ccc;
+        display: inline-block;
+		   }
+
 			.wallet-thumbnail{
 				display: block;
 				width: 425px;
 				height: 150px;
-				margin: 5px 10px 0px 0px;
+				margin: 5px 23px 0px 0px;
 				float: left;
 				padding: 10px;
 				border: 1px solid #ccc;
@@ -4599,7 +4617,6 @@
 			.wallet-thumbnail-selected{
 				border-left: 2px dotted green;
 				border-right: 2px dotted green;
-				box-shadow: 0.02em 0.02em 0.02em green;
 			}
 
 			.wallet-background{
@@ -4754,7 +4771,7 @@
 		@media print
 		{
 			.logo,.footer,
-			.commands, #paperwalletdetailsarea { display: none; }
+			.commands, #paperwalletdetailsarea, #wizard { display: none; }
 
 			body, div { margin: 0; padding: 0; -webkit-print-color-adjust: exact;}
 			#main { margin: 0; padding: 0; width: 100%; }
@@ -5081,26 +5098,6 @@
 
 	<script type="text/javascript">
 		ninja.wallets.paperwallet = {
-			open: function () {
-				//UI Changes
-				document.getElementById("generate").style.display = 'none';
-				document.getElementById("paperwalletdetailscommands").style.display = 'block';
-				document.getElementById("paperwalletdetailscolumns").style.display = 'block';
-				//document.getElementById("paperwalletdesignoptions").style.display = 'block';
-				//document.getElementById("paperwalletdesignsarea").style.display = 'block';
-
-				var limitElement = document.getElementById("paperlimit");
-				limitElement.value = ninja.wallets.paperwallet.numPages;
-
-				if(document.getElementById("paperwalletdetailskeys").innerHTML == "") {
-					ninja.wallets.paperwallet.startGeneration(ninja.wallets.paperwallet.numPages);
-				}
-
-				if(document.getElementById("paperwalletdesignoptions").innerHTML == "") {
-					ninja.wallets.paperwallet.showDesigns();
-				}
-			},
-
 			remaining: null, // use to keep track of how many addresses are left to process when building the paper wallet
 			count: 0,
 			numPages: 1,
@@ -5115,9 +5112,9 @@
 				ninja.wallets.paperwallet.numPages = pages;
 			},
 
-			build: function (numPages) {
+			build: function () {
 				if (numPages < 1) numPages = 1;
-				ninja.wallets.paperwallet.numPages = numPages;
+				numPages = ninja.wallets.paperwallet.numPages;
 				ninja.wallets.paperwallet.remaining = numPages * ninja.wallets.paperwallet.pageBreakAt;
 				ninja.wallets.paperwallet.count = 0;
 				document.getElementById("paperkeyarea").innerHTML = "";
@@ -5168,6 +5165,7 @@
 				}
 				else{
 					ninja.print(); //When generation finishes
+					document.getElementById("paperkeyarea").innerHTML = ''; //Clear the wallet area
 				}
 			},
 
@@ -5214,26 +5212,15 @@
 				for(; i<alias_seed.length; i++){
 					var character = alias_seed.substr(i, 1);
 					var index = base58.indexOf(character);
-					if(i == 0) alias.push(adjectives[Math.round(index)]);
-					if(i == 1) alias.push(colors[Math.round(index)]);
-					if(i == 2) alias.push(animals[Math.round(index)]);
+					if(i == 0) alias.push(adjectives[index]);
+					if(i == 1) alias.push(colors[index]);
+					if(i == 2) alias.push(animals[index]);
 				}
 				return alias;
 			},
 
 			toggleAlias: function(){
 				ninja.wallets.paperwallet.show_alias = ninja.wallets.paperwallet.show_alias ? false : true;
-				var elements = document.getElementsByClassName('alias');
-				for(var i = 0; i < elements.length; i++){
-					if(ninja.wallets.paperwallet.show_alias) elements[i].style.display = "inline";
-					else elements[i].style.display = "none";
-				}
-
-				var elements = document.getElementsByClassName('aliasprefix');
-				for(var i = 0; i < elements.length; i++){
-					if(ninja.wallets.paperwallet.show_alias) elements[i].style.display = "inline";
-					else elements[i].style.display = "none";
-				}
 			},
 
 			exportToCSV: function(){
@@ -5428,20 +5415,24 @@
 					elements[i].innerHTML = addressPrefix;
 				}
 
-				var elements = document.getElementsByClassName("aliasprefix" + idPostFix);
-				for (var i = 0; i < elements.length; i++) {
-					elements[i].innerHTML = alias_short + ": ";
+				if(ninja.wallets.paperwallet.show_alias){
+					var elements = document.getElementsByClassName("aliasprefix" + idPostFix);
+					for (var i = 0; i < elements.length; i++) {
+						elements[i].innerHTML = alias_short + ": ";
+					}
 				}
-
+				
 				// Assign addresses to elements
 				var elements = document.getElementsByClassName("btcaddress" + idPostFix);
 				for (var i = 0; i < elements.length; i++) {
 					elements[i].innerHTML = bitcoinAddress;
 				}
 
-				var elements = document.getElementsByClassName("alias" + idPostFix);
-				for (var i = 0; i < elements.length; i++) {
-					elements[i].innerHTML = alias_full + ": ";
+				if(ninja.wallets.paperwallet.show_alias){
+					var elements = document.getElementsByClassName("alias" + idPostFix);
+					for (var i = 0; i < elements.length; i++) {
+						elements[i].innerHTML = alias_full + ": ";
+					}
 				}
 
 				var keyValuePair = {};
@@ -5451,6 +5442,197 @@
 				document.getElementById("keyarea" + idPostFix).style.display = "block";
 			}
 		};
+	</script>
+
+	<script type="text/javascript">
+		var x = y = offsetX = offSetY = 0,
+    dragged, lastDragged, lastZIndex, dropPosition,
+    imageScale = 1;
+
+		var initialHeight,
+    initialWidth,
+    initialLeft,
+    initialTop;
+
+		ninja.wallets.paperwallet.alignmentwidget = {
+			main: '',
+			mmX: '',
+			mmY: '',
+			mouse: '',
+
+			init: function(){
+				ninja.wallets.paperwallet.alignmentwidget.main = document.getElementById('paperwalletdesignaligment');
+				ninja.wallets.paperwallet.alignmentwidget.mmX = document.getElementById('paperhorizontaloffset');
+				ninja.wallets.paperwallet.alignmentwidget.mmY = document.getElementById('paperverticaloffset');
+				ninja.wallets.paperwallet.alignmentwidget.mouse = ninja.wallets.paperwallet.alignmentwidget.mouseInit();
+			},
+
+			mouseInit: function(){
+				var main = ninja.wallets.paperwallet.alignmentwidget.main;
+				var mmX = ninja.wallets.paperwallet.alignmentwidget.mmX;
+				var mmY = ninja.wallets.paperwallet.alignmentwidget.mmY;
+
+				var _parseInt = function (n) {
+				  n = parseInt(n, 10);
+				  return n == null || isNaN(n) ? 0 : n;
+				};
+
+				var _hasClass = function (element, className) {
+				  return (' ' + element.className + ' ').indexOf(' ' + className + ' ') > -1;
+				};
+
+				var mousedown = function (e) {
+				  var target;
+
+				  e = e || window.event;
+				  target = e.target !== null ? e.target : e.srcElement;
+
+				  if ((e.button == 1 && window.event != null || e.button == 0) && _hasClass(target, "drag")) {
+			      x = e.clientX;
+			      y = e.clientY;
+			      offsetX = _parseInt(target.style.left);
+			      offsetY = _parseInt(target.style.top);
+
+			      // bring the clicked element to the front while it is being dragged
+			      lastZIndex = target.style.zIndex;
+			      target.style.zIndex = 10000;
+			      
+			      // we need to access the element in OnMouseMove
+			      dragged = target;
+
+			      // tell our code to start moving the element with the mouse
+			      document.onmousemove = mousemove;
+			      
+			      // cancel out any text selections
+			      document.body.focus();
+
+			      // prevent text selection in IE
+			      document.onselectstart = function () { return false; };
+			      // prevent IE from trying to drag an image
+			      target.ondragstart = function() { return false; };
+			      
+			      // prevent text selection (except IE)
+			      return false;
+				  }
+				};
+
+				var mouseup = function (e) {
+				  if (dragged != null) {
+				    dragged.style.zIndex = lastZIndex;
+
+				    document.onmousemove = null;
+				    document.onselectstart = null;
+				    dragged.ondragstart = null;
+
+				    lastDragged = dragged;
+				    dragged = null;
+
+				    lastDragged.style.left = lastDragged.style.left === "" ? 0 : lastDragged.style.left;
+				    lastDragged.style.top = lastDragged.style.top === "" ? 0 : lastDragged.style.top;
+
+				    var lastDraggedPosition = {
+				        x: lastDragged.style.left,
+				        y: lastDragged.style.top,
+				        mmX: (parseInt(lastDragged.style.left, 10) * 0.264583333).toFixed(3),
+				        mmY: (parseInt(lastDragged.style.top, 10) * 0.264583333).toFixed(3)
+				    };
+
+				    lastDraggedPosition;
+
+				    initialLeft = lastDragged.style.left;
+				    initialTop = lastDragged.style.top;
+
+				    setInputs(lastDraggedPosition);
+					}
+				};
+
+				var mousemove = function (e) {
+				  e = e || window.event;
+
+				  // limit the box
+				  if ((offsetX + e.clientX - x) > dragged.width/ 2) {
+				      dragged.style.left = dragged.width / 2 + 'px';
+				  } else if ((offsetX + e.clientX - x) < -dragged.width / 2) {
+				      dragged.style.left = -dragged.width / 2 + 'px';
+				  } else {
+				      dragged.style.left = (offsetX + e.clientX - x) + 'px';
+				  }
+
+				  if ((offsetY + e.clientY - y) > dragged.height / 2) {
+				      dragged.style.top = dragged.height / 2 + 'px';
+				  } else if ((offsetY + e.clientY - y) < -dragged.height / 2) {
+				      dragged.style.top = -dragged.height / 2 + 'px';
+				  } else {
+				      dragged.style.top = (offsetY + e.clientY - y) + 'px';  
+				  }
+
+				  var position = {
+				      x: dragged.style.left,
+				      y: dragged.style.top,
+				      mmX: (parseInt(dragged.style.left, 10) * 0.264583333).toFixed(3),
+				      mmY: (parseInt(dragged.style.top, 10) * 0.264583333).toFixed(3)
+				  };
+
+				  initialLeft = dragged.style.left;
+				  initialTop = dragged.style.top;
+
+				  setInputs(position);
+				};
+
+				var setInputs = function (position) {
+					// inverted coordinate system for print
+				  mmX.value = -position.mmX;
+				  mmY.value = -position.mmY;
+				};
+
+				return {
+				  down: mousedown,
+				  up: mouseup
+				};
+			},
+			
+			addImage: function(){
+				//var mouse = ninja.wallets.paperwallet.alignmentwidget.mouse;
+
+				var barcode = new Image(),
+		        box = document.createElement('div');
+		        box.id = 'barcode-box';
+		    var scale = imageScale;
+		    barcode.src = "data:image/gif;base64,R0lGODlh+gBkALMAADWY2/P3+Wix48De8Y7E6UKe3drq9ebx94G+51ur4afR7ZrL683k87TX706l33S45SH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS4wLWMwNjAgNjEuMTM0Nzc3LCAyMDEwLzAyLzEyLTE3OjMyOjAwICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpGMDFDNjJFNURBRUUxMUUyODYxNjk3QjcwOThGRTc4QSIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpGMDFDNjJFNkRBRUUxMUUyODYxNjk3QjcwOThGRTc4QSI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkYwMUM2MkUzREFFRTExRTI4NjE2OTdCNzA5OEZFNzhBIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOkYwMUM2MkU0REFFRTExRTI4NjE2OTdCNzA5OEZFNzhBIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+Af/+/fz7+vn49/b19PPy8fDv7u3s6+rp6Ofm5eTj4uHg397d3Nva2djX1tXU09LR0M/OzczLysnIx8bFxMPCwcC/vr28u7q5uLe2tbSzsrGwr66trKuqqainpqWko6KhoJ+enZybmpmYl5aVlJOSkZCPjo2Mi4qJiIeGhYSDgoGAf359fHt6eXh3dnV0c3JxcG9ubWxramloZ2ZlZGNiYWBfXl1cW1pZWFdWVVRTUlFQT05NTEtKSUhHRkVEQ0JBQD8+PTw7Ojk4NzY1NDMyMTAvLi0sKyopKCcmJSQjIiEgHx4dHBsaGRgXFhUUExIREA8ODQwLCgkIBwYFBAMCAQAAIfkEAAAAAAAsAAAAAPoAZAAABP8QyEmrvTjrzbv/YCiOZGmeaKqubOu+cCzPdG3feK7vfO//wKBwSCwaj8ikcslsOp/QqHRKrVqv2Kx2y+16v+CweEwum8/otHrNbrvf8Lh8Tq/b7/i8fs/v+/+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChokcJAqYJaAsIEgkON60gDqhrAwYDtQcLBUoBAikDBBLAN8MZAgEUBANsxQAOAwy7SL2/wUbHcs0SBtYDCcoLAAsHAQENswAPBgEGDeEWAw8NAQcICQP0q6z4AboWCwEY3JKAYJ0Bff/ImZtVTJWEAgrKNfAG4N4DBuzQUUCwgMC6AdL/VMlb5hDAAATz6knAeCscRwkdFZB7BwCiRIpZtAHwKIFeAwLBCKCCuCzdAV8OJl4I6IvAAQZND+wqcCCYAwY0JyQIQMCUUV8CDjy4ILSmgqLFijFQsOsBtWMNXCm14JRAgQJzBzwloMCkNaY7pe7sJQCVMmEqt/oCsLYttZzWJmADEAAhBQEEkDGmedjCY8qLQe/sK+HBgaWhGUQmwEADZs1pg7mVJnoyANvJilYMsGsAaWF/Q7/VLKFzs2GzJ3y+onPycnUBMfYM3bnC5+u+at2CRpwCdsndJ0BnIN0v8J26axPHPaG6aG3FvuM2HnmY++VWdHb+fMyac+rpKSfc/4AmKWDKgagJCJ4F/UkwWWzoeQfWeuEVlx418AWn4Hxo1RfUhaExF1lNYk3Xnm6THXRigiaaqEADHHymIkEG0IUibN0EU5CEt1FIlm5b9TZifARyeN55OyoImQQOIHDAb58VNFVExRngykUBtiiaiccsVoBlE6hU5VTcWCClWTieR5VVmU24IF2tSdAAaRlqSc1Wrlh4pHlrOtOmFvz4NJaSwthiAJUwSXQWi1tu6aRA/VyAQAC1SCCTXr9VoN2haZpXkUF/2sZecQccoJ00dTb62KUw0jdBMQmAit8ZpWigQFYjmEKbBQ4UNkGveWJQayy8faBMAb6eUEqwHzhQrHccAijwAGYHMBuFAl1dhOsG7uGArQDa0uHAAi1ZGwVKAzQAJgcv7YCuuqPEK++89NZr77345qvvvvz26++/AAcs8MAEF2zwwQgnrPDCDDfs8MMQRyzxxBRXbPHFGGes8cYcd+zxxyCHLPLIJJds8skop6zyyiVHAAA7";
+		    barcode.onload = function () {
+		       // set the width and height to attributes
+	        var imageBox = {};
+
+	        barcode.width = barcode.width;
+	        barcode.height = barcode.height;
+
+	        initialWidth = barcode.width;
+	        initialHeight = barcode.height;
+
+	        barcode.width = scale * (initialWidth);
+	        barcode.height = scale * (initialHeight);
+
+	        box.style.width = barcode.width + (barcode.width * 0.2);
+	        box.style.height = barcode.height + (barcode.height * 0.2);
+
+	        imageBox.width = barcode.width + (barcode.width * 0.2);
+	        imageBox.height = barcode.height + (barcode.height * 0.2);
+
+	        box.setAttribute('style', 'height: ' + imageBox.height + 'px; width: ' + imageBox.width + 'px;');
+
+	        marginTop = Math.floor((parseInt(box.style.height, 10) - parseInt(barcode.height, 10)) / 2) || 0;
+
+	        barcode.setAttribute('style', 'margin: ' + marginTop +  'px auto; display: block; position: relative;');
+	        barcode.className = "drag";
+
+	        box.appendChild(barcode);
+	        // the image has loaded, so put a div with it
+	        ninja.wallets.paperwallet.alignmentwidget.main.appendChild(box);
+  				box.setAttribute('onmousedown', 'ninja.wallets.paperwallet.alignmentwidget.mouse.down(event)');
+      		box.setAttribute('onmouseup', 'ninja.wallets.paperwallet.alignmentwidget.mouse.up(event)');
+		    }
+			}
+		}
 	</script>
 
 	<script type="text/javascript">
@@ -5489,15 +5671,20 @@
 					post_actions: [{fnc: ninja.wallets.paperwallet.startGeneration, parameters: null}]
 				},
 				{
+					//Show Print Page - here the user can align printing and choose wallet designs
 					pre_actions: [],
-					html: '<div><h4>How do you want to print your wallet?</h4></div>'+
-								'<div id="paperwalletdetailsarea"><div id="paperwalletdesignsarea">'+
-								'<p>Select a design for your paper wallet by clicking the notes below. The default option prints the wallet with no background.</p>'+
-								'<p>Note: if you are using <strong>Firefox or Internet Explorer</strong>, you must change your browser print settings to allow for printing background images.</p>' +
-								'<p>In Firefox: Page Setup -> Format & Options Tab under Options. Select "Print Background colours and images".</p>'+
-								'<p>In IE: On the Tools menu, click Internet Options, and then click the Advanced tab. In the Settings box, under Printing, click to select the "Print background colors and images" check box, and then click OK.</p>'+
-								'<p><h2>Printing Options</h2></p><p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="ninja.wallets.paperwallet.toggleAlias()" checked="checked"/></span><span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span><span><label id="paperlabelhorizontaloffset">Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span></p><div id="paperwalletdesignoptions"></div></div><div style="clear:both;"></div></div>',
-					post_actions: [{fnc: ninja.wallets.paperwallet.showDesigns, parameters: null}]
+					html: '<h4>How do you want to print your wallet?</h4>'+
+								'<div id="paperwalletdetailsarea">'+
+									'<div id="paperwalletdesignsarea">'+
+										'<div id="paperwalletdetailstext"><p>Select a design for your paper wallet by clicking the notes below. The default option prints the wallet with no background.</p>'+
+										'<p>Note: if you are using <strong>Firefox or Internet Explorer</strong>, you must change your browser print settings to allow for printing background images.</p>' +
+										'<p>In Firefox: Page Setup -> Format & Options Tab under Options. Select "Print Background colours and images".</p>'+
+										'<p>In IE: On the Tools menu, click Internet Options, and then click the Advanced tab. In the Settings box, under Printing, click to select the "Print background colors and images" check box, and then click OK.</p></div>'+
+										'<div id="paperwalletprintcommands"><p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="ninja.wallets.paperwallet.toggleAlias()" checked="checked"/></span><br><span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span><span><label id="paperlabelhorizontaloffset"> Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span><div id="paperwalletdesignaligment"></div><div><input type="button" value="Print Wallet" onclick="ninja.wallets.paperwallet.build()" /></div></p></div>'+
+										'<div id="paperwalletdesignoptions"></div>'+
+									'</div><div style="clear:both;">'+
+								'</div>',
+					post_actions: [{fnc: ninja.wallets.paperwallet.showDesigns, parameters: null}, {fnc: ninja.wallets.paperwallet.alignmentwidget.init, parameters: null}, {fnc: ninja.wallets.paperwallet.alignmentwidget.addImage, parameters: null}]
 				}
 			],
 
@@ -5556,6 +5743,9 @@
 			window.print();
 		};
 	</script>
+
+	
+
 
 	<script type="text/javascript">
 	(function (ninja) {
