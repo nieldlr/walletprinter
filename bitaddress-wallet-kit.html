@@ -5704,6 +5704,7 @@
 			body, div { margin: 0; padding: 0; -webkit-print-color-adjust: exact;}
 			#main { margin: 0; padding: 0; width: 100%; }
 			#wallets{ display: block; }
+			#decryptkey{display: none;}
 
 			#paperarea .keyarea {
 				position: relative;
@@ -6478,8 +6479,7 @@
 				if(passphrase1 == '' || passphrase2 == '') alert('Please enter a passphrase before encrypting.');
 				else{
 					if(passphrase1 == passphrase2){
-						document.getElementById('busyencrypting').innerHTML = 'Encrypting... This may take a minute or two.';
-						//opw.ui.nextStep();
+						document.getElementById('busyencrypting').innerHTML = "Encrypting... This may take a minute or two. Once it's done you'll be taken to the next step.";
 						var keys_remaining = opw.paperwallet.wallet_details.length-1;
 						var i=1;
 						for(;i<opw.paperwallet.wallet_details.length; i++){
