@@ -614,6 +614,588 @@
 				return (num << cnt) | (num >>> (32 - cnt));
 			}
 		})();
+
+		/*!
+		* Crypto-JS v2.0.0
+		* http://code.google.com/p/crypto-js/
+		* Copyright (c) 2009, Jeff Mott. All rights reserved.
+		* http://code.google.com/p/crypto-js/wiki/License
+		*/
+		(function(){
+		
+		// Shortcuts
+		var C = Crypto,
+		    util = C.util,
+		    charenc = C.charenc,
+		    UTF8 = charenc.UTF8,
+		    Binary = charenc.Binary;
+		
+		C.PBKDF2 = function (password, salt, keylen, options) {
+		
+			// Convert to byte arrays
+			if (password.constructor == String) password = UTF8.stringToBytes(password);
+			if (salt.constructor == String) salt = UTF8.stringToBytes(salt);
+			/* else, assume byte arrays already */
+		
+			// Defaults
+			var hasher = options && options.hasher || C.SHA1,
+			    iterations = options && options.iterations || 1;
+		
+			// Pseudo-random function
+			function PRF(password, salt) {
+				return C.HMAC(hasher, salt, password, { asBytes: true });
+			}
+		
+			// Generate key
+			var derivedKeyBytes = [],
+			    blockindex = 1;
+			while (derivedKeyBytes.length < keylen) {
+				var block = PRF(password, salt.concat(util.wordsToBytes([blockindex])));
+				for (var u = block, i = 1; i < iterations; i++) {
+					u = PRF(password, u);
+					for (var j = 0; j < block.length; j++) block[j] ^= u[j];
+				}
+				derivedKeyBytes = derivedKeyBytes.concat(block);
+				blockindex++;
+			}
+		
+			// Truncate excess bytes
+			derivedKeyBytes.length = keylen;
+		
+			return options && options.asBytes ? derivedKeyBytes :
+			       options && options.asString ? Binary.bytesToString(derivedKeyBytes) :
+			       util.bytesToHex(derivedKeyBytes);
+		
+		};
+		
+		})();
+
+		(function(){
+		
+		// Shortcuts
+		var C = Crypto,
+		    util = C.util,
+		    charenc = C.charenc,
+		    UTF8 = charenc.UTF8,
+		    Binary = charenc.Binary;
+		
+		C.HMAC = function (hasher, message, key, options) {
+		
+			// Convert to byte arrays
+			if (message.constructor == String) message = UTF8.stringToBytes(message);
+			if (key.constructor == String) key = UTF8.stringToBytes(key);
+			/* else, assume byte arrays already */
+		
+			// Allow arbitrary length keys
+			if (key.length > hasher._blocksize * 4)
+				key = hasher(key, { asBytes: true });
+		
+			// XOR keys with pad constants
+			var okey = key.slice(0),
+			    ikey = key.slice(0);
+			for (var i = 0; i < hasher._blocksize * 4; i++) {
+				okey[i] ^= 0x5C;
+				ikey[i] ^= 0x36;
+			}
+		
+			var hmacbytes = hasher(okey.concat(hasher(ikey.concat(message), { asBytes: true })), { asBytes: true });
+		
+			return options && options.asBytes ? hmacbytes :
+			       options && options.asString ? Binary.bytesToString(hmacbytes) :
+			       util.bytesToHex(hmacbytes);
+		
+		};
+		
+		})();
+
+		/*!
+		* Crypto-JS v2.0.0
+		* http://code.google.com/p/crypto-js/
+		* Copyright (c) 2009, Jeff Mott. All rights reserved.
+		* http://code.google.com/p/crypto-js/wiki/License
+		*/
+		(function(){
+		
+		// Shortcuts
+		var C = Crypto,
+		    util = C.util,
+		    charenc = C.charenc,
+		    UTF8 = charenc.UTF8;
+		
+		// Precomputed SBOX
+		var SBOX = [ 0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5,
+		             0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+		             0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0,
+		             0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+		             0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc,
+		             0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+		             0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a,
+		             0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+		             0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0,
+		             0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+		             0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b,
+		             0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+		             0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85,
+		             0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+		             0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5,
+		             0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+		             0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17,
+		             0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+		             0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88,
+		             0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+		             0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c,
+		             0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+		             0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9,
+		             0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+		             0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6,
+		             0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+		             0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e,
+		             0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+		             0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94,
+		             0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+		             0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68,
+		             0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 ];
+		
+		// Compute inverse SBOX lookup table
+		for (var INVSBOX = [], i = 0; i < 256; i++) INVSBOX[SBOX[i]] = i;
+		
+		// Compute multiplication in GF(2^8) lookup tables
+		var MULT2 = [],
+		    MULT3 = [],
+		    MULT9 = [],
+		    MULTB = [],
+		    MULTD = [],
+		    MULTE = [];
+		
+		function xtime(a, b) {
+			for (var result = 0, i = 0; i < 8; i++) {
+				if (b & 1) result ^= a;
+				var hiBitSet = a & 0x80;
+				a = (a << 1) & 0xFF;
+				if (hiBitSet) a ^= 0x1b;
+				b >>>= 1;
+			}
+			return result;
+		}
+		
+		for (var i = 0; i < 256; i++) {
+			MULT2[i] = xtime(i,2);
+			MULT3[i] = xtime(i,3);
+			MULT9[i] = xtime(i,9);
+			MULTB[i] = xtime(i,0xB);
+			MULTD[i] = xtime(i,0xD);
+			MULTE[i] = xtime(i,0xE);
+		}
+		
+		// Precomputed RCon lookup
+		var RCON = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
+		
+		// Inner state
+		var state = [[], [], [], []],
+		    keylength,
+		    nrounds,
+		    keyschedule;
+		
+		var AES = C.AES = {
+		
+			/**
+			 * Public API
+			 */
+		
+			encrypt: function (message, password, options) {
+		
+				options = options || {};
+		
+				// Determine mode
+				var mode = options.mode;
+		
+				// Allow mode to override options
+				if (mode.fixOptions) mode.fixOptions(options);
+		
+				var
+		
+					// Convert to bytes if message is a string
+					m = (
+						message.constructor == String ?
+						UTF8.stringToBytes(message) :
+						message
+					),
+		
+					// Generate random IV
+					iv = options.iv || util.randomBytes(AES._blocksize * 4),
+		
+					// Generate key
+					k = (
+						password.constructor == String ?
+						// Derive key from pass-phrase
+						C.PBKDF2(password, iv, 32, { asBytes: true }) :
+						// else, assume byte array representing cryptographic key
+						password
+					);
+		
+				// Encrypt
+				AES._init(k);
+				mode.encrypt(AES, m, iv);
+		
+				// Return ciphertext
+				m = options.iv ? m : iv.concat(m);
+				return (options && options.asBytes) ? m : util.bytesToBase64(m);
+		
+			},
+		
+			decrypt: function (ciphertext, password, options) {
+		
+				options = options || {};
+		
+				// Determine mode
+				var mode = options.mode;
+		
+				// Allow mode to override options
+				if (mode.fixOptions) mode.fixOptions(options);
+		
+				var
+		
+					// Convert to bytes if ciphertext is a string
+					c = (
+						ciphertext.constructor == String ?
+						util.base64ToBytes(ciphertext):
+					    ciphertext
+					),
+		
+					// Separate IV and message
+					iv = options.iv || null /*c.splice(0, AES._blocksize * 4)*/,
+		
+					// Generate key
+					k = (
+						password.constructor == String ?
+						// Derive key from pass-phrase
+						C.PBKDF2(password, iv, 32, { asBytes: true }) :
+						// else, assume byte array representing cryptographic key
+						password
+					);
+		
+				// Decrypt
+				AES._init(k);
+				mode.decrypt(AES, c, iv);
+		
+				// Return plaintext
+				return (options && options.asBytes) ? c : UTF8.bytesToString(c);
+		
+			},
+		
+		
+			/**
+			 * Package private methods and properties
+			 */
+		
+			_blocksize: 4,
+		
+			_encryptblock: function (m, offset) {
+		
+				// Set input
+				for (var row = 0; row < AES._blocksize; row++) {
+					for (var col = 0; col < 4; col++)
+						state[row][col] = m[offset + col * 4 + row];
+				}
+		
+				// Add round key
+				for (var row = 0; row < 4; row++) {
+					for (var col = 0; col < 4; col++)
+						state[row][col] ^= keyschedule[col][row];
+				}
+		
+				for (var round = 1; round < nrounds; round++) {
+		
+					// Sub bytes
+					for (var row = 0; row < 4; row++) {
+						for (var col = 0; col < 4; col++)
+							state[row][col] = SBOX[state[row][col]];
+					}
+		
+					// Shift rows
+					state[1].push(state[1].shift());
+					state[2].push(state[2].shift());
+					state[2].push(state[2].shift());
+					state[3].unshift(state[3].pop());
+		
+					// Mix columns
+					for (var col = 0; col < 4; col++) {
+		
+						var s0 = state[0][col],
+						    s1 = state[1][col],
+						    s2 = state[2][col],
+						    s3 = state[3][col];
+		
+						state[0][col] = MULT2[s0] ^ MULT3[s1] ^ s2 ^ s3;
+						state[1][col] = s0 ^ MULT2[s1] ^ MULT3[s2] ^ s3;
+						state[2][col] = s0 ^ s1 ^ MULT2[s2] ^ MULT3[s3];
+						state[3][col] = MULT3[s0] ^ s1 ^ s2 ^ MULT2[s3];
+		
+					}
+		
+					// Add round key
+					for (var row = 0; row < 4; row++) {
+						for (var col = 0; col < 4; col++)
+							state[row][col] ^= keyschedule[round * 4 + col][row];
+					}
+		
+				}
+		
+				// Sub bytes
+				for (var row = 0; row < 4; row++) {
+					for (var col = 0; col < 4; col++)
+						state[row][col] = SBOX[state[row][col]];
+				}
+		
+				// Shift rows
+				state[1].push(state[1].shift());
+				state[2].push(state[2].shift());
+				state[2].push(state[2].shift());
+				state[3].unshift(state[3].pop());
+		
+				// Add round key
+				for (var row = 0; row < 4; row++) {
+					for (var col = 0; col < 4; col++)
+						state[row][col] ^= keyschedule[nrounds * 4 + col][row];
+				}
+		
+				// Set output
+				for (var row = 0; row < AES._blocksize; row++) {
+					for (var col = 0; col < 4; col++)
+						m[offset + col * 4 + row] = state[row][col];
+				}
+		
+			},
+		
+			_decryptblock: function (c, offset) {
+		
+				// Set input
+				for (var row = 0; row < AES._blocksize; row++) {
+					for (var col = 0; col < 4; col++)
+						state[row][col] = c[offset + col * 4 + row];
+				}
+		
+				// Add round key
+				for (var row = 0; row < 4; row++) {
+					for (var col = 0; col < 4; col++)
+						state[row][col] ^= keyschedule[nrounds * 4 + col][row];
+				}
+		
+				for (var round = 1; round < nrounds; round++) {
+		
+					// Inv shift rows
+					state[1].unshift(state[1].pop());
+					state[2].push(state[2].shift());
+					state[2].push(state[2].shift());
+					state[3].push(state[3].shift());
+		
+					// Inv sub bytes
+					for (var row = 0; row < 4; row++) {
+						for (var col = 0; col < 4; col++)
+							state[row][col] = INVSBOX[state[row][col]];
+					}
+		
+					// Add round key
+					for (var row = 0; row < 4; row++) {
+						for (var col = 0; col < 4; col++)
+							state[row][col] ^= keyschedule[(nrounds - round) * 4 + col][row];
+					}
+		
+					// Inv mix columns
+					for (var col = 0; col < 4; col++) {
+		
+						var s0 = state[0][col],
+						    s1 = state[1][col],
+						    s2 = state[2][col],
+						    s3 = state[3][col];
+		
+						state[0][col] = MULTE[s0] ^ MULTB[s1] ^ MULTD[s2] ^ MULT9[s3];
+						state[1][col] = MULT9[s0] ^ MULTE[s1] ^ MULTB[s2] ^ MULTD[s3];
+						state[2][col] = MULTD[s0] ^ MULT9[s1] ^ MULTE[s2] ^ MULTB[s3];
+						state[3][col] = MULTB[s0] ^ MULTD[s1] ^ MULT9[s2] ^ MULTE[s3];
+		
+					}
+		
+				}
+		
+				// Inv shift rows
+				state[1].unshift(state[1].pop());
+				state[2].push(state[2].shift());
+				state[2].push(state[2].shift());
+				state[3].push(state[3].shift());
+		
+				// Inv sub bytes
+				for (var row = 0; row < 4; row++) {
+					for (var col = 0; col < 4; col++)
+						state[row][col] = INVSBOX[state[row][col]];
+				}
+		
+				// Add round key
+				for (var row = 0; row < 4; row++) {
+					for (var col = 0; col < 4; col++)
+						state[row][col] ^= keyschedule[col][row];
+				}
+		
+				// Set output
+				for (var row = 0; row < AES._blocksize; row++) {
+					for (var col = 0; col < 4; col++)
+						c[offset + col * 4 + row] = state[row][col];
+				}
+		
+			},
+		
+		
+			/**
+			 * Private methods
+			 */
+		
+			_init: function (k) {
+				keylength = k.length / 4;
+				nrounds = keylength + 6;
+				AES._keyexpansion(k);
+			},
+		
+			// Generate a key schedule
+			_keyexpansion: function (k) {
+		
+				keyschedule = [];
+		
+				for (var row = 0; row < keylength; row++) {
+					keyschedule[row] = [
+						k[row * 4],
+						k[row * 4 + 1],
+						k[row * 4 + 2],
+						k[row * 4 + 3]
+					];
+				}
+		
+				for (var row = keylength; row < AES._blocksize * (nrounds + 1); row++) {
+		
+					var temp = [
+						keyschedule[row - 1][0],
+						keyschedule[row - 1][1],
+						keyschedule[row - 1][2],
+						keyschedule[row - 1][3]
+					];
+		
+					if (row % keylength == 0) {
+		
+						// Rot word
+						temp.push(temp.shift());
+		
+						// Sub word
+						temp[0] = SBOX[temp[0]];
+						temp[1] = SBOX[temp[1]];
+						temp[2] = SBOX[temp[2]];
+						temp[3] = SBOX[temp[3]];
+		
+						temp[0] ^= RCON[row / keylength];
+		
+					} else if (keylength > 6 && row % keylength == 4) {
+		
+						// Sub word
+						temp[0] = SBOX[temp[0]];
+						temp[1] = SBOX[temp[1]];
+						temp[2] = SBOX[temp[2]];
+						temp[3] = SBOX[temp[3]];
+		
+					}
+		
+					keyschedule[row] = [
+						keyschedule[row - keylength][0] ^ temp[0],
+						keyschedule[row - keylength][1] ^ temp[1],
+						keyschedule[row - keylength][2] ^ temp[2],
+						keyschedule[row - keylength][3] ^ temp[3]
+					];
+		
+				}
+		
+			}
+		
+		};
+		
+		})();
+
+		/*!
+		 * Crypto-JS contribution from Simon Greatrix
+		 */
+		
+		(function(C){
+		
+		// Create pad namespace
+		var C_pad = C.pad = {};
+		
+		// No-operation padding, used for stream ciphers
+		C_pad.NoPadding = {
+		        pad : function (cipher,message) {},
+		        unpad : function (cipher,message) {}
+		    };
+		
+		// Create mode namespace
+		var C_mode = C.mode = {};
+		
+		/**
+		 * Mode base "class".
+		 */
+		var Mode = C_mode.Mode = function (padding) {
+		    if (padding) {
+		        this._padding = padding;
+		    }
+		};
+		
+		Mode.prototype = {
+		    encrypt: function (cipher, m, iv) {
+		        this._padding.pad(cipher, m);
+		        this._doEncrypt(cipher, m, iv);
+		    },
+		
+		    decrypt: function (cipher, m, iv) {
+		        this._doDecrypt(cipher, m, iv);
+		        this._padding.unpad(cipher, m);
+		    },
+		
+		    // Default padding
+		    _padding: C_pad.iso7816
+		};
+		
+		
+		/**
+		 * Electronic Code Book mode.
+		 * 
+		 * ECB applies the cipher directly against each block of the input.
+		 * 
+		 * ECB does not require an initialization vector.
+		 */
+		var ECB = C_mode.ECB = function () {
+		    // Call parent constructor
+		    Mode.apply(this, arguments);
+		};
+		
+		// Inherit from Mode
+		var ECB_prototype = ECB.prototype = new Mode;
+		
+		// Concrete steps for Mode template
+		ECB_prototype._doEncrypt = function (cipher, m, iv) {
+		    var blockSizeInBytes = cipher._blocksize * 4;
+		    // Encrypt each block
+		    for (var offset = 0; offset < m.length; offset += blockSizeInBytes) {
+		        cipher._encryptblock(m, offset);
+		    }
+		};
+		ECB_prototype._doDecrypt = function (cipher, c, iv) {
+		    var blockSizeInBytes = cipher._blocksize * 4;
+		    // Decrypt each block
+		    for (var offset = 0; offset < c.length; offset += blockSizeInBytes) {
+		        cipher._decryptblock(c, offset);
+		    }
+		};
+		
+		// ECB never uses an IV
+		ECB_prototype.fixOptions = function (options) {
+		    options.iv = [];
+		};
+		
+		})(Crypto);
 	</script>
 	
 	<script type="text/javascript">
@@ -3709,6 +4291,304 @@
 
 	<script type="text/javascript">
 		/*
+		* Copyright (c) 2010-2011 Intalio Pte, All Rights Reserved
+		* 
+		* Permission is hereby granted, free of charge, to any person obtaining a copy
+		* of this software and associated documentation files (the "Software"), to deal
+		* in the Software without restriction, including without limitation the rights
+		* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+		* copies of the Software, and to permit persons to whom the Software is
+		* furnished to do so, subject to the following conditions:
+		* 
+		* The above copyright notice and this permission notice shall be included in
+		* all copies or substantial portions of the Software.
+		* 
+		* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+		* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+		* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+		* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+		* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+		* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+		* THE SOFTWARE.
+		*/
+		// https://github.com/cheongwy/node-scrypt-js
+		(function() {
+		
+		var MAX_VALUE = 2147483647;
+		var workerUrl = null;
+		
+		//function scrypt(byte[] passwd, byte[] salt, int N, int r, int p, int dkLen)
+		/*
+		 * N = Cpu cost
+		 * r = Memory cost
+		 * p = parallelization cost
+		 * 
+		 */
+		window.Crypto_scrypt = function(passwd, salt, N, r, p, dkLen, callback) {
+		    if (N == 0 || (N & (N - 1)) != 0) throw Error("N must be > 0 and a power of 2");
+		
+		    if (N > MAX_VALUE / 128 / r) throw Error("Parameter N is too large");
+		    if (r > MAX_VALUE / 128 / p) throw Error("Parameter r is too large");
+		
+			var PBKDF2_opts = {iterations: 1, hasher: Crypto.SHA256, asBytes: true};
+		
+		    var B = Crypto.PBKDF2(passwd, salt, p * 128 * r, PBKDF2_opts);
+		    
+			try {
+				var i = 0;
+				var worksDone = 0;
+				var makeWorker = function() {
+					if (!workerUrl) {
+						var code = '('+scryptCore.toString()+')()';
+						var blob;
+						try {
+							blob = new Blob([code], {type: "text/javascript"});
+						} catch(e) {
+							window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder || window.MSBlobBuilder;
+							blob = new BlobBuilder();
+							blob.append(code);
+							blob = blob.getBlob("text/javascript");
+						}
+						workerUrl = URL.createObjectURL(blob);
+					}
+					var worker = new Worker(workerUrl);
+					worker.onmessage = function(event) {
+						var Bi = event.data[0], Bslice = event.data[1];
+						worksDone++;
+	
+						if (i < p) {
+							worker.postMessage([N, r, p, B, i++]);
+						}
+	
+						var length = Bslice.length, destPos = Bi * 128 * r, srcPos = 0;
+						while (length--) {
+							B[destPos++] = Bslice[srcPos++];
+						}
+	
+						if (worksDone == p) {
+							callback(Crypto.PBKDF2(passwd, B, dkLen, PBKDF2_opts));
+						}
+					};
+					return worker;
+				};
+				var workers = [makeWorker(), makeWorker()];
+				workers[0].postMessage([N, r, p, B, i++]);
+				if (p > 1) {
+					workers[1].postMessage([N, r, p, B, i++]);
+				}
+			} catch (e) {
+				window.setTimeout(function() {
+					scryptCore();
+					callback(Crypto.PBKDF2(passwd, B, dkLen, PBKDF2_opts));
+				}, 0);
+			}
+
+			// using this function to enclose everything needed to create a worker (but also invokable directly for synchronous use)
+			function scryptCore() {
+				var XY = [], V = [];
+
+				if (typeof B === 'undefined') {
+					onmessage = function(event) {
+						var data = event.data;
+						var N = data[0], r = data[1], p = data[2], B = data[3], i = data[4];
+					
+						var Bslice = [];
+						arraycopy32(B, i * 128 * r, Bslice, 0, 128 * r);
+						smix(Bslice, 0, r, N, V, XY);
+					
+						postMessage([i, Bslice]);
+					};
+				} else {
+					for(var i = 0; i < p; i++) {
+						smix(B, i * 128 * r, r, N, V, XY);
+					}
+				}
+				
+				function smix(B, Bi, r, N, V, XY) {
+					var Xi = 0;
+					var Yi = 128 * r;
+					var i;
+				
+					arraycopy32(B, Bi, XY, Xi, Yi);
+					
+					for (i = 0; i < N; i++) {
+						arraycopy32(XY, Xi, V, i * Yi, Yi);
+						blockmix_salsa8(XY, Xi, Yi, r);
+					}
+				
+					for (i = 0; i < N; i++) {
+						var j = integerify(XY, Xi, r) & (N - 1);
+						blockxor(V, j * Yi, XY, Xi, Yi);
+						blockmix_salsa8(XY, Xi, Yi, r);
+					}
+				
+					arraycopy32(XY, Xi, B, Bi, Yi);
+				}
+				
+				function blockmix_salsa8(BY, Bi, Yi, r) {
+					var X = [];
+					var i;
+				
+					arraycopy32(BY, Bi + (2 * r - 1) * 64, X, 0, 64);
+					
+					for (i = 0; i < 2 * r; i++) {
+						blockxor(BY, i * 64, X, 0, 64);
+						salsa20_8(X);
+						arraycopy32(X, 0, BY, Yi + (i * 64), 64);
+					}
+				
+					for (i = 0; i < r; i++) {
+						arraycopy32(BY, Yi + (i * 2) * 64, BY, Bi + (i * 64), 64);
+					}
+				
+					for (i = 0; i < r; i++) {
+						arraycopy32(BY, Yi + (i * 2 + 1) * 64, BY, Bi + (i + r) * 64, 64);
+					}
+				}
+				
+				function R(a, b) {
+					return (a << b) | (a >>> (32 - b));
+				}
+				
+				function salsa20_8(B) {
+					var B32 = new Array(32);
+					var x   = new Array(32);
+					var i;
+				
+					for (i = 0; i < 16; i++) {
+						B32[i]  = (B[i * 4 + 0] & 0xff) << 0;
+						B32[i] |= (B[i * 4 + 1] & 0xff) << 8;
+						B32[i] |= (B[i * 4 + 2] & 0xff) << 16;
+						B32[i] |= (B[i * 4 + 3] & 0xff) << 24;
+					}
+				
+					arraycopy(B32, 0, x, 0, 16);
+				
+					for (i = 8; i > 0; i -= 2) {
+						x[ 4] ^= R(x[ 0]+x[12], 7);  x[ 8] ^= R(x[ 4]+x[ 0], 9);
+						x[12] ^= R(x[ 8]+x[ 4],13);  x[ 0] ^= R(x[12]+x[ 8],18);
+						x[ 9] ^= R(x[ 5]+x[ 1], 7);  x[13] ^= R(x[ 9]+x[ 5], 9);
+						x[ 1] ^= R(x[13]+x[ 9],13);  x[ 5] ^= R(x[ 1]+x[13],18);
+						x[14] ^= R(x[10]+x[ 6], 7);  x[ 2] ^= R(x[14]+x[10], 9);
+						x[ 6] ^= R(x[ 2]+x[14],13);  x[10] ^= R(x[ 6]+x[ 2],18);
+						x[ 3] ^= R(x[15]+x[11], 7);  x[ 7] ^= R(x[ 3]+x[15], 9);
+						x[11] ^= R(x[ 7]+x[ 3],13);  x[15] ^= R(x[11]+x[ 7],18);
+						x[ 1] ^= R(x[ 0]+x[ 3], 7);  x[ 2] ^= R(x[ 1]+x[ 0], 9);
+						x[ 3] ^= R(x[ 2]+x[ 1],13);  x[ 0] ^= R(x[ 3]+x[ 2],18);
+						x[ 6] ^= R(x[ 5]+x[ 4], 7);  x[ 7] ^= R(x[ 6]+x[ 5], 9);
+						x[ 4] ^= R(x[ 7]+x[ 6],13);  x[ 5] ^= R(x[ 4]+x[ 7],18);
+						x[11] ^= R(x[10]+x[ 9], 7);  x[ 8] ^= R(x[11]+x[10], 9);
+						x[ 9] ^= R(x[ 8]+x[11],13);  x[10] ^= R(x[ 9]+x[ 8],18);
+						x[12] ^= R(x[15]+x[14], 7);  x[13] ^= R(x[12]+x[15], 9);
+						x[14] ^= R(x[13]+x[12],13);  x[15] ^= R(x[14]+x[13],18);
+					}
+				
+					for (i = 0; i < 16; ++i) B32[i] = x[i] + B32[i];
+					
+					for (i = 0; i < 16; i++) {
+						var bi = i * 4;
+						B[bi + 0] = (B32[i] >> 0  & 0xff);
+						B[bi + 1] = (B32[i] >> 8  & 0xff);
+						B[bi + 2] = (B32[i] >> 16 & 0xff);
+						B[bi + 3] = (B32[i] >> 24 & 0xff);
+					}
+				}
+				
+				function blockxor(S, Si, D, Di, len) {
+					var i = len>>6;
+					while (i--) {
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+						D[Di++] ^= S[Si++]; D[Di++] ^= S[Si++];
+					}		
+				}
+				
+				function integerify(B, bi, r) {
+					var n;
+					
+					bi += (2 * r - 1) * 64;
+				
+					n  = (B[bi + 0] & 0xff) << 0;
+					n |= (B[bi + 1] & 0xff) << 8;
+					n |= (B[bi + 2] & 0xff) << 16;
+					n |= (B[bi + 3] & 0xff) << 24;
+				
+					return n;
+				}
+				
+				function arraycopy(src, srcPos, dest, destPos, length) {
+					 while (length-- ){
+						 dest[destPos++] = src[srcPos++];
+					 }	
+				}
+
+				function arraycopy32(src, srcPos, dest, destPos, length) {
+					var i = length>>5;
+					while(i--) {
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						 
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];	
+						
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						 
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];
+						dest[destPos++] = src[srcPos++]; dest[destPos++] = src[srcPos++];			
+					}
+				}
+			} // scryptCore
+		}; // window.Crypto_scrypt
+		})();
+	</script>
+
+	<script type="text/javascript">
+		/*
 		Copyright (c) 2011 Stefan Thomas
 
 		Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -4507,6 +5387,10 @@
 			*/
 			sha256ripe160: function (data) {
 				return Crypto.RIPEMD160(Crypto.SHA256(data, { asBytes: true }), { asBytes: true });
+			},
+
+			dsha256: function (data) {
+				return Crypto.SHA256(Crypto.SHA256(data, { asBytes: true }), { asBytes: true });
 			}
 		};
 	</script>
@@ -4526,10 +5410,15 @@
 			body{
 				padding:0;
 				margin:0;
-				background-color:#5acdce;
+				background-color:#D7F2F7;
 				font-family:Verdana, Geneva, Arial, Helvetica, sans-serif;
 				color:#313131;
 			}
+
+			a{
+				color: #29C4E3;
+			}
+
 			p{
 				font-size: 0.8em;
 			}
@@ -4539,15 +5428,18 @@
 				margin:25px auto;
 				background-color:#fff;
 				border-radius:5px;
-				box-shadow:0 0 3px #508586;
-				padding:20px 10px;
-				
+				box-shadow:0 0 2.5px #508586;
+				padding: 15px;
 			}
 			#wizard{
-				margin-top: 80px;
+				margin-top: 75px;
 				border-radius: 10px;
-				border: 1px solid #aaa;
+				border: 1px dotted #888;
 				padding: 10px 25px;
+			}
+
+			#decryptkey{
+				float: right;
 			}
 			.footer_inner{
 				width:996px;
@@ -4649,17 +5541,53 @@
 				width: 300px;
 				display: inline-block;
 			}
+
+			#keytodecrypt, #passphrasetodecrypt{
+				font-size: 0.9em;
+				width: 300px;
+				display: inline-block;
+				margin-bottom: 5px;
+			}
+
 			.errors{
 				margin: 5px 0px 5px 0px;
 				color: red;
 			}
+
+			a .logo{
+				color: #fff;
+				text-shadow: 0 0 1px #444;
+			}
+
 			.logo{
+				font-size: 1.5em;
 				float:left;
-				margin:0 55px 0 0;
+				margin: 8px 55px 0 0;
+				padding: 10px 25px;
+				border-radius:8px;
+				border: 1px solid #30BFD9;
+
+				background: #2bc9ce; /* Old browsers */
+				background: -moz-linear-gradient(top, #2bc9ce 0%, #20AFC9 100%); /* FF3.6+ */
+				background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#2bc9ce), color-stop(100%,#20AFC9)); /* Chrome,Safari4+ */
+				background: -webkit-linear-gradient(top, #2bc9ce 0%,#20AFC9 100%); /* Chrome10+,Safari5.1+ */
+				background: -o-linear-gradient(top, #2bc9ce 0%,#20AFC9 100%); /* Opera 11.10+ */
+				background: -ms-linear-gradient(top, #2bc9ce 0%,#20AFC9 100%); /* IE10+ */
+				background: linear-gradient(to bottom, #2bc9ce 0%,#20AFC9 100%); /* W3C */
+				filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#2bc9ce', endColorstr='#20AFC9',GradientType=0 ); /* IE6-9 */
 			}
 
 			input[type="number"]{
 				width: 75px;
+			}
+
+			input[type="password"]{
+				border:1px solid #c4c4c4;
+				border-radius:5px;
+				height:22px;
+				line-height:22px;
+				outline:none!important;
+				margin-bottom: 5px; 
 			}
 			
 			input[type="text"]{
@@ -4776,10 +5704,11 @@
 			body, div { margin: 0; padding: 0; -webkit-print-color-adjust: exact;}
 			#main { margin: 0; padding: 0; width: 100%; }
 			#wallets{ display: block; }
+			#decryptkey{display: none;}
 
 			#paperarea .keyarea {
 				position: relative;
-				width: 7.5in; height: 2.5in;
+				width: 7.5in; height: 2.45in;
 				margin: 0; padding: 0; border: 0;
 				font-size: 0.1in; line-height: 0.15in;
 			}
@@ -4841,11 +5770,11 @@
 		}
 	</style>
 </head>
-<body onclick="SecureRandom.seedTime();" onkeypress="SecureRandom.seedTime();" onload="ninja.wallets.paperwallet.ui.nextStep(0)">
+<body onclick="SecureRandom.seedTime();" onkeypress="SecureRandom.seedTime();" onload="opw.ui.nextStep(0)">
 	<div id="main">
 		
-		<img class="logo" width="184" height="55" title="SafePaperWallet" alt="SafePaperWallet" src="data:image/png;base64,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" />
-		
+		<a href="/"><h1 class="logo">Open Paper Wallet</h1></a>
+		<div id="decryptkey"><input type="button" value="Decrypt Keys" onclick="opw.ui.nextStep(6)" /></div>
 		<div id="wizard">
 		</div>
 
@@ -4858,7 +5787,7 @@
 	
 
 	<script type="text/javascript">
-		var ninja = { wallets: {} };
+		var ninja = {paperwallet: {}};
 
 		ninja.privateKey = {
 			isPrivateKey: function (key) {
@@ -4869,6 +5798,12 @@
 					Bitcoin.ECKey.isBase64Format(key) ||
 					Bitcoin.ECKey.isMiniFormat(key)
 				);
+			},
+			isWalletImportFormat: function (key) {
+				key = key.toString();
+				return (ninja.testnetMode) ?
+							(/^9[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{50}$/.test(key)) :
+							(/^5[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{50}$/.test(key));
 			},
 			getECKeyFromAdding: function (privKey1, privKey2) {
 				var n = EllipticCurve.getSECCurveByName("secp256k1").getN();
@@ -4893,6 +5828,194 @@
 				// compressed when both keys are compressed
 				if (ecKey1.compressed && ecKey2.compressed) combinedPrivateKey.setCompressed(true);
 				return combinedPrivateKey;
+			},
+
+			//Thanks to Zalieps for this Javascript implementation
+			BIP38PrivateKeyToEncryptedKeyAsync: function (base58Key, passphrase, compressed, callback) {
+				var privKeyBytes = ninja.privateKey.anyPrivateKeyToByteArray(base58Key);
+
+				var privKey = new Bitcoin.ECKey(privKeyBytes);
+				var address = compressed? privKey.getBitcoinAddressCompressed() : privKey.getBitcoinAddress();
+
+				// compute sha256(sha256(privKey)) and take first 4 bytes
+				var salt = Bitcoin.Util.dsha256(address).slice(0, 4);
+
+				// derive key using scrypt
+				var AES_opts = {mode: new Crypto.mode.ECB(Crypto.pad.NoPadding), asBytes: true};
+
+				Crypto_scrypt(passphrase, salt, 16384, 8, 8, 64, function(derivedBytes) {
+					for(var i = 0; i < 32; ++i) {
+						privKeyBytes[i] ^= derivedBytes[i];
+					}
+
+					// 0x01 0x42 + flagbyte + salt + encryptedhalf1 + encryptedhalf2
+					var flagByte = compressed? 0xe0 : 0xc0;
+					var encryptedKey = [ 0x01, 0x42, flagByte ].concat(salt);
+
+					var encryptedKey = encryptedKey.concat(Crypto.AES.encrypt(privKeyBytes, derivedBytes.slice(32), AES_opts));
+
+					encryptedKey = encryptedKey.concat(Bitcoin.Util.dsha256(encryptedKey).slice(0,4));
+
+					callback(Bitcoin.Base58.encode(encryptedKey));
+				});
+			},
+
+			//Thanks to pointbiz for this Javascript implementation
+			BIP38EncryptedKeyToWIFAsync: function (base58Encrypted, passphrase, callback) {
+				var hex;
+				try {
+					hex = Bitcoin.Base58.decode(base58Encrypted);
+				} catch (e) {
+					callback('Not a valid private key');
+					return;
+				}
+
+				// 43 bytes: 2 bytes prefix, 37 bytes payload, 4 bytes checksum
+				if (hex.length != 43) {
+					callback('Not a valid private key');
+					return;
+				}
+				// first byte is always 0x01 
+				else if (hex[0] != 0x01) {
+					callback('Not a valid private key');
+					return;
+				}
+
+				var expChecksum = hex.slice(-4);
+				hex = hex.slice(0, -4);
+				var checksum = Bitcoin.Util.dsha256(hex);
+				if (checksum[0] != expChecksum[0] || checksum[1] != expChecksum[1] || checksum[2] != expChecksum[2] || checksum[3] != expChecksum[3]) {
+					callback('Not a valid private key');
+					return;
+				}
+
+				var isCompPoint = false;
+				var isECMult = false;
+				var hasLotSeq = false;
+				// second byte for non-EC-multiplied key
+				if (hex[1] == 0x42) {
+					// key should use compression
+					if (hex[2] == 0xe0) {
+						isCompPoint = true;
+					}
+					// key should NOT use compression
+					else if (hex[2] != 0xc0) {
+						callback('Not a valid private key');
+						return;
+					}
+				}
+				// second byte for EC-multiplied key 
+				else if (hex[1] == 0x43) {
+					isECMult = true;
+					isCompPoint = (hex[2] & 0x20) != 0;
+					hasLotSeq = (hex[2] & 0x04) != 0;
+					if ((hex[2] & 0x24) != hex[2]) {
+						callback('Not a valid private key');
+						return;
+					}
+				} 
+				else {
+					callback('Not a valid private key');
+					return;
+				}
+
+				var decrypted;
+				var AES_opts = { mode: new Crypto.mode.ECB(Crypto.pad.NoPadding), asBytes: true };
+
+				var verifyHashAndReturn = function (decryptedbytearray) {
+					var tmpkey = new Bitcoin.ECKey(decryptedbytearray); // decrypted using closure
+					tmpkey.setCompressed(isCompPoint);
+					var base58AddrText = tmpkey.getBitcoinAddress(); // isCompPoint using closure
+					checksum = Bitcoin.Util.dsha256(base58AddrText); // checksum using closure
+
+					if (checksum[0] != hex[3] || checksum[1] != hex[4] || checksum[2] != hex[5] || checksum[3] != hex[6]) {
+						callback('Incorrect passphrase'); // callback using closure
+						return;
+					}
+					else{
+						callback(tmpkey.getBitcoinWalletImportFormat()); // callback using closure
+					}
+				};
+
+				if (!isECMult) {
+					var addresshash = hex.slice(3, 7);
+					Crypto_scrypt(passphrase, addresshash, 16384, 8, 8, 64, function (derivedBytes) {
+						var k = derivedBytes.slice(32, 32 + 32);
+						decrypted = Crypto.AES.decrypt(hex.slice(7, 7 + 32), k, AES_opts);
+						for (var x = 0; x < 32; x++) decrypted[x] ^= derivedBytes[x];
+						verifyHashAndReturn(decrypted);
+					});
+				} 
+				else {
+					var ownerentropy = hex.slice(7, 7 + 8);
+					var ownersalt = !hasLotSeq ? ownerentropy : ownerentropy.slice(0, 4);
+					Crypto_scrypt(passphrase, ownersalt, 16384, 8, 8, 32, function (prefactorA) {
+						var passfactor;
+						if (!hasLotSeq) { // hasLotSeq using closure
+							passfactor = prefactorA;
+						} else {
+							var prefactorB = prefactorA.concat(ownerentropy); // ownerentropy using closure
+							passfactor = Bitcoin.Util.dsha256(prefactorB);
+						}
+						var kp = new Bitcoin.ECKey(passfactor);
+						kp.setCompressed(true);
+						var passpoint = kp.getPub();
+						
+						var encryptedpart2 = hex.slice(23, 23 + 16);
+
+						var addresshashplusownerentropy = hex.slice(3, 3 + 12);
+						Crypto_scrypt(passpoint, addresshashplusownerentropy, 1024, 1, 1, 64, function (derived) {
+							var k = derived.slice(32);
+
+							var unencryptedpart2 = Crypto.AES.decrypt(encryptedpart2, k, AES_opts);
+							for (var i = 0; i < 16; i++) { unencryptedpart2[i] ^= derived[i + 16]; }
+
+							var encryptedpart1 = hex.slice(15, 15 + 8).concat(unencryptedpart2.slice(0, 0 + 8));
+							var unencryptedpart1 = Crypto.AES.decrypt(encryptedpart1, k, AES_opts);
+							for (var i = 0; i < 16; i++) { unencryptedpart1[i] ^= derived[i]; }
+
+							var seedb = unencryptedpart1.slice(0, 0 + 16).concat(unencryptedpart2.slice(8, 8 + 8));
+
+							var factorb = Bitcoin.Util.dsha256(seedb);
+
+							var ps = EllipticCurve.getSECCurveByName("secp256k1");
+							var privateKey = BigInteger.fromByteArrayUnsigned(passfactor).multiply(BigInteger.fromByteArrayUnsigned(factorb)).remainder(ps.getN());
+
+							decrypted = privateKey.toByteArrayUnsigned();
+							verifyHashAndReturn(decrypted);
+						});
+					});
+				}
+			},
+
+			anyPrivateKeyToByteArray: function (privKey) {
+				var keyFormat = ninja.privateKey;
+				var bytes = null;
+				if (keyFormat.isWalletImportFormat(privKey)) {
+					bytes = Bitcoin.Base58.decode(privKey);
+					bytes.shift();
+					bytes = bytes.slice(0, bytes.length - 4);
+				}
+				else if (keyFormat.isCompressedWalletImportFormat(privKey)) {
+					bytes = Bitcoin.Base58.decode(privKey);
+					bytes.shift();
+					bytes.pop();
+					bytes = bytes.slice(0, bytes.length - 4);
+				}
+				else if (keyFormat.isHexFormat(privKey)) {
+					bytes = Crypto.util.hexToBytes(privKey);
+				}
+				else if (keyFormat.isBase64Format(privKey)) {
+					bytes = Crypto.util.base64ToBytes(privKey);
+				}
+				else if (keyFormat.isMiniFormat(privKey)) {
+					bytes = Crypto.SHA256(privKey, { asBytes: true });
+				}
+
+				if (bytes != null && bytes.length != 32) {
+					bytes = null;
+				}
+				return bytes;
 			}
 		};
 
@@ -4976,7 +6099,7 @@
 				ninja.seeder.seedCount++;
 				// seeding is over now we generate and display the address
 				if (ninja.seeder.seedCount == ninja.seeder.seedLimit) {
-					ninja.wallets.paperwallet.ui.nextStep();
+					opw.ui.nextStep();
 				}
 			},
 
@@ -5096,8 +6219,15 @@
 		};
 	</script>
 
+	<script>
+		//Init Open Paper Wallet Functions
+		var opw = {paperwallet: {}, designs: {}, ui: {}, alignmentwidget: {}};
+	</script>
+
 	<script type="text/javascript">
-		ninja.wallets.paperwallet = {
+		//Original bitaddress.org functions have been heavily modified and/or with lots more functions added. Thus it's better to rename the core function object.
+
+		opw.paperwallet = {
 			remaining: null, // use to keep track of how many addresses are left to process when building the paper wallet
 			count: 0,
 			numPages: 1,
@@ -5105,29 +6235,30 @@
 			show_alias: true, // variable to show alias or not
 			wallet_details: [], // fill this with details for showWallet and export to CSV
 			invalid_keys: false, // variable to check if everything is good with keys
-			wallet_design_id: 0,
+			wallet_design_id: 0, // reference the chosen wallet design
+			encryptkeys: false, // does the user want to encrypt the keys or not
 
 			savePageNumber: function(){
 				var pages = document.getElementById("paperlimit").value;
-				ninja.wallets.paperwallet.numPages = pages;
+				opw.paperwallet.numPages = pages;
 			},
 
 			build: function () {
 				if (numPages < 1) numPages = 1;
-				numPages = ninja.wallets.paperwallet.numPages;
-				ninja.wallets.paperwallet.remaining = numPages * ninja.wallets.paperwallet.pageBreakAt;
-				ninja.wallets.paperwallet.count = 0;
+				numPages = opw.paperwallet.numPages;
+				opw.paperwallet.remaining = numPages * opw.paperwallet.pageBreakAt;
+				opw.paperwallet.count = 0;
 				document.getElementById("paperkeyarea").innerHTML = "";
-				setTimeout(ninja.wallets.paperwallet.batch, 0);
+				setTimeout(opw.paperwallet.batch, 0);
 			},
 
 			startGeneration: function(){
-				numPages = ninja.wallets.paperwallet.numPages;
+				numPages = opw.paperwallet.numPages;
 				if (numPages < 1) numPages = 1;
-				ninja.wallets.paperwallet.remaining = numPages * ninja.wallets.paperwallet.pageBreakAt;
-				ninja.wallets.paperwallet.count = 0;
+				opw.paperwallet.remaining = numPages * opw.paperwallet.pageBreakAt;
+				opw.paperwallet.count = 0;
 				document.getElementById("paperwalletdetailskeys").innerHTML = "";
-				setTimeout(ninja.wallets.paperwallet.batchGenerate, 0);
+				setTimeout(opw.paperwallet.batchGenerate, 0);
 			},
 
 			startSeed: function(){
@@ -5135,23 +6266,23 @@
 			},
 
 			batch: function () {
-				if (ninja.wallets.paperwallet.remaining > 0) {
+				if (opw.paperwallet.remaining > 0) {
 					var paperArea = document.getElementById("paperkeyarea");
-					ninja.wallets.paperwallet.count++;
-					var i = ninja.wallets.paperwallet.count;
-					var pageBreakAt = ninja.wallets.paperwallet.pageBreakAt;
+					opw.paperwallet.count++;
+					var i = opw.paperwallet.count;
+					var pageBreakAt = opw.paperwallet.pageBreakAt;
 					var div = document.createElement("div");
 					div.setAttribute("id", "keyarea" + i);
-					div.innerHTML = ninja.wallets.paperwallet.templateHtml(i);
+					div.innerHTML = opw.paperwallet.templateHtml(i);
 					div.setAttribute("class", "keyarea");
 					img = document.createElement('img');
 					img.setAttribute("class", "wallet-background");
-					img.src = ninja.wallets.paperwallet.designs[ninja.wallets.paperwallet.wallet_design_id].source;
+					img.src = opw.designs[opw.paperwallet.wallet_design_id].source;
 					div.appendChild(img);
 
 					if (paperArea.innerHTML != "") {
 						// page break
-						if (i % pageBreakAt == 1 && ninja.wallets.paperwallet.count >= pageBreakAt) {
+						if (i % pageBreakAt == 1 && opw.paperwallet.count >= pageBreakAt) {
 							var pBreak = document.createElement("div");
 							pBreak.setAttribute("class", "pagebreak");
 							document.getElementById("paperkeyarea").appendChild(pBreak);
@@ -5159,9 +6290,9 @@
 						}
 					}
 					document.getElementById("paperkeyarea").appendChild(div);
-					ninja.wallets.paperwallet.showWallet(i);
-					ninja.wallets.paperwallet.remaining--;
-					setTimeout(ninja.wallets.paperwallet.batch, 0);
+					opw.paperwallet.showWallet(i);
+					opw.paperwallet.remaining--;
+					setTimeout(opw.paperwallet.batch, 0);
 				}
 				else{
 					ninja.print(); //When generation finishes
@@ -5170,31 +6301,31 @@
 			},
 
 			batchGenerate: function(){
-				if(ninja.wallets.paperwallet.remaining > 0) {
+				if(opw.paperwallet.remaining > 0) {
 					var detail_area = document.getElementById("paperwalletdetailskeys");
-					ninja.wallets.paperwallet.count++;
-					var i = ninja.wallets.paperwallet.count;
+					opw.paperwallet.count++;
+					var i = opw.paperwallet.count;
 
 					var div = document.createElement('div');
-					div.innerHTML = ninja.wallets.paperwallet.templateWalletDetailsHtml(i);
+					div.innerHTML = opw.paperwallet.templateWalletDetailsHtml(i);
 					detail_area.appendChild(div);
 
-					ninja.wallets.paperwallet.generateNewWallet(i);
-					ninja.wallets.paperwallet.remaining--;
-					setTimeout(ninja.wallets.paperwallet.batchGenerate, 0);
+					opw.paperwallet.generateNewWallet(i);
+					opw.paperwallet.remaining--;
+					setTimeout(opw.paperwallet.batchGenerate, 0);
 				}
-				if(ninja.wallets.paperwallet.remaining == 0) ninja.wallets.paperwallet.validateKeys();
+				if(opw.paperwallet.remaining == 0) opw.paperwallet.validateKeys();
 			},
 
 			// Generate addresses and private keys
 			generateNewWallet: function (idPostFix) {
 				var key = new Bitcoin.ECKey(false);
-				ninja.wallets.paperwallet.wallet_details[idPostFix] = {
+				opw.paperwallet.wallet_details[idPostFix] = {
 					bitcoinAddress: key.getBitcoinAddress(),
 					privateKeyWif: key.getBitcoinWalletImportFormat(),
-					alias: ninja.wallets.paperwallet.generateAlias(key.getBitcoinAddress()),
+					alias: opw.paperwallet.generateAlias(key.getBitcoinAddress()),
 				}
-				ninja.wallets.paperwallet.showWalletDetails(idPostFix);
+				opw.paperwallet.showWalletDetails(idPostFix);
 			},
 
 			generateAlias: function(bitcoinAddress){
@@ -5220,17 +6351,17 @@
 			},
 
 			toggleAlias: function(){
-				ninja.wallets.paperwallet.show_alias = ninja.wallets.paperwallet.show_alias ? false : true;
+				opw.paperwallet.show_alias = opw.paperwallet.show_alias ? false : true;
 			},
 
 			exportToCSV: function(){
 				var csvContent = "data:text/csv;charset=utf-8,";
 				var csv = 'label,public address';
 
-				for(var i = 1; i < ninja.wallets.paperwallet.wallet_details.length; i++){
-					var alias = ninja.wallets.paperwallet.wallet_details[i].alias;
+				for(var i = 1; i < opw.paperwallet.wallet_details.length; i++){
+					var alias = opw.paperwallet.wallet_details[i].alias;
 					var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
-					var address = ninja.wallets.paperwallet.wallet_details[i].bitcoinAddress;
+					var address = opw.paperwallet.wallet_details[i].bitcoinAddress;
 					csv = csv +'\n'+ alias_full + "," + address;
 				}
 
@@ -5240,7 +6371,7 @@
 
 			showWalletDetails: function(idPostFix){
 				//Show Alias
-				var alias = ninja.wallets.paperwallet.wallet_details[idPostFix].alias;
+				var alias = opw.paperwallet.wallet_details[idPostFix].alias;
 				var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
 				var elements = document.getElementsByClassName("aliasdetail" + idPostFix);
 				for (var i = 0; i < elements.length; i++) {
@@ -5248,14 +6379,14 @@
 				}
 
 				//Show Bitcoin Address
-				var bitcoinAddress = ninja.wallets.paperwallet.wallet_details[idPostFix].bitcoinAddress;
+				var bitcoinAddress = opw.paperwallet.wallet_details[idPostFix].bitcoinAddress;
 				var elements = document.getElementsByClassName("addressdetail" + idPostFix);
 				for (var i = 0; i < elements.length; i++) {
 					elements[i].innerHTML = bitcoinAddress;
 				}
 
 				//Show Private Key
-				var privateKeyWif = ninja.wallets.paperwallet.wallet_details[idPostFix].privateKeyWif;
+				var privateKeyWif = opw.paperwallet.wallet_details[idPostFix].privateKeyWif;
 				var elements = document.getElementsByClassName("privatekeydetail" + idPostFix);
 				for (var i = 0; i < elements.length; i++) {
 					elements[i].value = privateKeyWif;
@@ -5263,7 +6394,7 @@
 			},
 
 			validateKeys: function(){
-				ninja.wallets.paperwallet.invalid_keys = false; //Assume everything is fine
+				opw.paperwallet.invalid_keys = false; //Assume everything is fine
 				var keypairs = [];
 
 				//Reset Errors
@@ -5288,18 +6419,18 @@
 						div.getElementsByClassName('aliasdetail'+i)[0].innerHTML = "Invalid private key";
 					}
 					else{
-						ninja.wallets.paperwallet.wallet_details[i].privateKeyWif = keypairs[i].private_key.string;
+						opw.paperwallet.wallet_details[i].privateKeyWif = keypairs[i].private_key.string;
 						
 						var public_address_test = new Bitcoin.ECKey(keypairs[i].private_key.string).getBitcoinAddress();
-						ninja.wallets.paperwallet.wallet_details[i].bitcoinAddress = public_address_test;
+						opw.paperwallet.wallet_details[i].bitcoinAddress = public_address_test;
 
 						if(public_address_test != keypairs[i].public_address.string){
 							div.getElementsByClassName('addressdetail'+i)[0].innerHTML = public_address_test;
 
-							var alias = ninja.wallets.paperwallet.generateAlias(public_address_test);
+							var alias = opw.paperwallet.generateAlias(public_address_test);
 							var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
 							div.getElementsByClassName('aliasdetail'+i)[0].innerHTML = alias_full;
-							ninja.wallets.paperwallet.wallet_details[i].alias = alias;
+							opw.paperwallet.wallet_details[i].alias = alias;
 						}
 					}
 				}
@@ -5308,7 +6439,7 @@
 				var i = 1;
 				for(; i < keys.length+1; i++){
 					if(keypairs[i].private_key.error){
-						ninja.wallets.paperwallet.invalid_keys = true;
+						opw.paperwallet.invalid_keys = true;
 						document.getElementsByClassName('keypair'+i)[0].getElementsByClassName('errors')[0].innerHTML = " [ ! ]";
 						document.getElementsByClassName('keypair'+i)[0].getElementsByClassName('errors')[0].style.color = "red";
 					}
@@ -5320,26 +6451,76 @@
 			},
 
 			confirm: function(){
-				ninja.wallets.paperwallet.validateKeys();
-				if(!ninja.wallets.paperwallet.invalid_keys){
-					ninja.wallets.paperwallet.ui.nextStep();
+				opw.paperwallet.validateKeys();
+				if(!opw.paperwallet.invalid_keys){
+					opw.ui.nextStep();
 				}
 				else{
 					alert('One or more private keys are invalid. Make sure you entered them correctly and press confirm again.');
 				}
 			},
 
+			confirmAndEncrypt: function(){
+				opw.paperwallet.validateKeys();
+				if(!opw.paperwallet.invalid_keys){
+					opw.paperwallet.encryptkeys = true;
+					opw.ui.nextStep();
+				}
+				else{
+					alert('One or more private keys are invalid. Make sure you entered them correctly and press confirm again.');
+				}
+			},
+
+			startEncryption: function(){
+				//Validate Passwords
+				var passphrase1 = document.getElementById('bippassphrase').value;
+				var passphrase2 = document.getElementById('bippassphraseconfirm').value;
+
+				if(passphrase1 == '' || passphrase2 == '') alert('Please enter a passphrase before encrypting.');
+				else{
+					if(passphrase1 == passphrase2){
+						document.getElementById('busyencrypting').innerHTML = "Encrypting... This may take a minute or two. Once it's done you'll be taken to the next step.";
+						var keys_remaining = opw.paperwallet.wallet_details.length-1;
+						var i=1;
+						for(;i<opw.paperwallet.wallet_details.length; i++){
+							(function(index){
+								var privatekey = opw.paperwallet.wallet_details[index].privateKeyWif;
+								ninja.privateKey.BIP38PrivateKeyToEncryptedKeyAsync(privatekey, passphrase1, false, function(eckey){
+									keys_remaining = --keys_remaining;
+									opw.paperwallet.wallet_details[index].privateKeyEnc = eckey;
+									if(keys_remaining == 0) opw.ui.nextStep();
+								});
+							})(i);
+						}
+					}
+					else{
+						alert('The passphrases do not match. Please type them again.');
+					}
+				}
+			},
+
+			decryptKey: function(){
+				document.getElementById('busydecrypting').innerHTML = "Decrypting... give it a few seconds."
+				var encryptedkey = document.getElementById('keytodecrypt').value;
+				var passphrase = document.getElementById('passphrasetodecrypt').value;
+
+				ninja.privateKey.BIP38EncryptedKeyToWIFAsync(encryptedkey, passphrase, function(eckey){
+					document.getElementById('busydecrypting').innerHTML = '';
+					alert(eckey);
+				});
+			},
+
 			showDesigns: function(){
-				var designs = ninja.wallets.paperwallet.designs;
+				var designs = opw.designs;
 				var walletsarea = document.getElementById('paperwalletdesignoptions');
 
 				for(var i=0; i < designs.length; i++){
 					var div = document.createElement('div');
 					if(designs[i].name == "Pre-printed"){
-						div.innerHTML = '<span class="wallet-thumbnail wallet-thumbnail-selected wallet-thumbnail-no-design" onclick="ninja.wallets.paperwallet.selectDesign('+i+')">No background</span>';
+						div.innerHTML = '<span class="wallet-thumbnail wallet-thumbnail-selected wallet-thumbnail-no-design" onclick="opw.paperwallet.selectDesign('+i+')">No background - Can be used for pre-printed paper.</span>';
 					}
 					else{
-						div.innerHTML = '<span><img class="wallet-thumbnail" src='+ designs[i].source +' onclick="ninja.wallets.paperwallet.selectDesign('+i+')" /></span>';
+						div.innerHTML = '<span><img class="wallet-thumbnail" src='+ designs[i].source +' onclick="opw.paperwallet.selectDesign('+i+')" /></span>';
 					}
 					walletsarea.appendChild(div);
 				}
@@ -5355,7 +6536,7 @@
 						document.getElementsByClassName('wallet-thumbnail')[i].setAttribute('class', "wallet-thumbnail");
 					}
 				}
-				ninja.wallets.paperwallet.wallet_design_id = id;
+				opw.paperwallet.wallet_design_id = id;
 			},
 
 			templateWalletDetailsHtml: function(i){
@@ -5363,7 +6544,7 @@
 					"<div class='keypair keypair"+ i + "'>" +
 						"<span class='aliasdetail aliasdetail"+ i + "'></span><span class='addressdetail addressdetail"+ i +"'></span>"+
 						"<input type='password' class='privatekeydetail privatekeydetail"+ i +"'"+
-						" onkeypress='ninja.wallets.paperwallet.validateKeys("+i+")' onblur='ninja.wallets.paperwallet.validateKeys("+i+")'/>" +
+						" onkeypress='opw.paperwallet.validateKeys("+i+")' onblur='opw.paperwallet.validateKeys("+i+")'/>" +
 						"<span class='errors'></span>" +
 					"</div>";
 				return walletdetailsHtml;
@@ -5401,9 +6582,10 @@
 			},
 
 			showWallet: function (idPostFix) {
-				var alias = ninja.wallets.paperwallet.wallet_details[idPostFix].alias;
-				var bitcoinAddress = ninja.wallets.paperwallet.wallet_details[idPostFix].bitcoinAddress;
-				var privateKeyWif = ninja.wallets.paperwallet.wallet_details[idPostFix].privateKeyWif;
+				var alias = opw.paperwallet.wallet_details[idPostFix].alias;
+				var bitcoinAddress = opw.paperwallet.wallet_details[idPostFix].bitcoinAddress;
+				var privateKey = opw.paperwallet.wallet_details[idPostFix].privateKeyWif;
+				if(opw.paperwallet.encryptkeys) privateKey = opw.paperwallet.wallet_details[idPostFix].privateKeyEnc;
 
 				var addressPrefix = bitcoinAddress.substr(0, 7);
 				var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
@@ -5415,7 +6597,7 @@
 					elements[i].innerHTML = addressPrefix;
 				}
 
-				if(ninja.wallets.paperwallet.show_alias){
+				if(opw.paperwallet.show_alias){
 					var elements = document.getElementsByClassName("aliasprefix" + idPostFix);
 					for (var i = 0; i < elements.length; i++) {
 						elements[i].innerHTML = alias_short + ": ";
@@ -5428,7 +6610,7 @@
 					elements[i].innerHTML = bitcoinAddress;
 				}
 
-				if(ninja.wallets.paperwallet.show_alias){
+				if(opw.paperwallet.show_alias){
 					var elements = document.getElementsByClassName("alias" + idPostFix);
 					for (var i = 0; i < elements.length; i++) {
 						elements[i].innerHTML = alias_full + ": ";
@@ -5437,13 +6619,12 @@
 
 				var keyValuePair = {};
 				keyValuePair["qrcode_public" + idPostFix] = "bitcoin:"+bitcoinAddress+"?label="+alias[0]+alias[1]+alias[2];
-				keyValuePair["qrcode_private" + idPostFix] = privateKeyWif;
+				keyValuePair["qrcode_private" + idPostFix] = privateKey;
 				ninja.qrCode.showQrCode(keyValuePair);
 				document.getElementById("keyarea" + idPostFix).style.display = "block";
 			}
 		};
 	</script>
-
 	<script type="text/javascript">
 		var x = y = offsetX = offSetY = 0,
     dragged, lastDragged, lastZIndex, dropPosition,
@@ -5454,23 +6635,26 @@
     initialLeft,
     initialTop;
 
-		ninja.wallets.paperwallet.alignmentwidget = {
+		opw.alignmentwidget = {
 			main: '',
 			mmX: '',
 			mmY: '',
 			mouse: '',
 
 			init: function(){
-				ninja.wallets.paperwallet.alignmentwidget.main = document.getElementById('paperwalletdesignaligment');
-				ninja.wallets.paperwallet.alignmentwidget.mmX = document.getElementById('paperhorizontaloffset');
-				ninja.wallets.paperwallet.alignmentwidget.mmY = document.getElementById('paperverticaloffset');
-				ninja.wallets.paperwallet.alignmentwidget.mouse = ninja.wallets.paperwallet.alignmentwidget.mouseInit();
+				if(opw.paperwallet.wallet_design_id == 0){
+					opw.alignmentwidget.main = document.getElementById('paperwalletdesignaligment');
+					opw.alignmentwidget.mmX = document.getElementById('paperhorizontaloffset');
+					opw.alignmentwidget.mmY = document.getElementById('paperverticaloffset');
+					opw.alignmentwidget.mouse = opw.alignmentwidget.mouseInit();
+					opw.alignmentwidget.addImage();
+				}
 			},
 
 			mouseInit: function(){
-				var main = ninja.wallets.paperwallet.alignmentwidget.main;
-				var mmX = ninja.wallets.paperwallet.alignmentwidget.mmX;
-				var mmY = ninja.wallets.paperwallet.alignmentwidget.mmY;
+				var main = opw.alignmentwidget.main;
+				var mmX = opw.alignmentwidget.mmX;
+				var mmY = opw.alignmentwidget.mmY;
 
 				var _parseInt = function (n) {
 				  n = parseInt(n, 10);
@@ -5592,13 +6776,13 @@
 			},
 			
 			addImage: function(){
-				//var mouse = ninja.wallets.paperwallet.alignmentwidget.mouse;
 
 				var barcode = new Image(),
 		        box = document.createElement('div');
 		        box.id = 'barcode-box';
 		    var scale = imageScale;
-		    barcode.src = "data:image/gif;base64,R0lGODlh+gBkALMAADWY2/P3+Wix48De8Y7E6UKe3drq9ebx94G+51ur4afR7ZrL683k87TX706l33S45SH/C1hNUCBEYXRhWE1QPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS4wLWMwNjAgNjEuMTM0Nzc3LCAyMDEwLzAyLzEyLTE3OjMyOjAwICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpGMDFDNjJFNURBRUUxMUUyODYxNjk3QjcwOThGRTc4QSIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpGMDFDNjJFNkRBRUUxMUUyODYxNjk3QjcwOThGRTc4QSI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkYwMUM2MkUzREFFRTExRTI4NjE2OTdCNzA5OEZFNzhBIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOkYwMUM2MkU0REFFRTExRTI4NjE2OTdCNzA5OEZFNzhBIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+Af/+/fz7+vn49/b19PPy8fDv7u3s6+rp6Ofm5eTj4uHg397d3Nva2djX1tXU09LR0M/OzczLysnIx8bFxMPCwcC/vr28u7q5uLe2tbSzsrGwr66trKuqqainpqWko6KhoJ+enZybmpmYl5aVlJOSkZCPjo2Mi4qJiIeGhYSDgoGAf359fHt6eXh3dnV0c3JxcG9ubWxramloZ2ZlZGNiYWBfXl1cW1pZWFdWVVRTUlFQT05NTEtKSUhHRkVEQ0JBQD8+PTw7Ojk4NzY1NDMyMTAvLi0sKyopKCcmJSQjIiEgHx4dHBsaGRgXFhUUExIREA8ODQwLCgkIBwYFBAMCAQAAIfkEAAAAAAAsAAAAAPoAZAAABP8QyEmrvTjrzbv/YCiOZGmeaKqubOu+cCzPdG3feK7vfO//wKBwSCwaj8ikcslsOp/QqHRKrVqv2Kx2y+16v+CweEwum8/otHrNbrvf8Lh8Tq/b7/i8fs/v+/+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChokcJAqYJaAsIEgkON60gDqhrAwYDtQcLBUoBAikDBBLAN8MZAgEUBANsxQAOAwy7SL2/wUbHcs0SBtYDCcoLAAsHAQENswAPBgEGDeEWAw8NAQcICQP0q6z4AboWCwEY3JKAYJ0Bff/ImZtVTJWEAgrKNfAG4N4DBuzQUUCwgMC6AdL/VMlb5hDAAATz6knAeCscRwkdFZB7BwCiRIpZtAHwKIFeAwLBCKCCuCzdAV8OJl4I6IvAAQZND+wqcCCYAwY0JyQIQMCUUV8CDjy4ILSmgqLFijFQsOsBtWMNXCm14JRAgQJzBzwloMCkNaY7pe7sJQCVMmEqt/oCsLYttZzWJmADEAAhBQEEkDGmedjCY8qLQe/sK+HBgaWhGUQmwEADZs1pg7mVJnoyANvJilYMsGsAaWF/Q7/VLKFzs2GzJ3y+onPycnUBMfYM3bnC5+u+at2CRpwCdsndJ0BnIN0v8J26axPHPaG6aG3FvuM2HnmY++VWdHb+fMyac+rpKSfc/4AmKWDKgagJCJ4F/UkwWWzoeQfWeuEVlx418AWn4Hxo1RfUhaExF1lNYk3Xnm6THXRigiaaqEADHHymIkEG0IUibN0EU5CEt1FIlm5b9TZifARyeN55OyoImQQOIHDAb58VNFVExRngykUBtiiaiccsVoBlE6hU5VTcWCClWTieR5VVmU24IF2tSdAAaRlqSc1Wrlh4pHlrOtOmFvz4NJaSwthiAJUwSXQWi1tu6aRA/VyAQAC1SCCTXr9VoN2haZpXkUF/2sZecQccoJ00dTb62KUw0jdBMQmAit8ZpWigQFYjmEKbBQ4UNkGveWJQayy8faBMAb6eUEqwHzhQrHccAijwAGYHMBuFAl1dhOsG7uGArQDa0uHAAi1ZGwVKAzQAJgcv7YCuuqPEK++89NZr77345qvvvvz26++/AAcs8MAEF2zwwQgnrPDCDDfs8MMQRyzxxBRXbPHFGGes8cYcd+zxxyCHLPLIJJds8skop6zyyiVHAAA7";
+		    barcode.src = "data:image/png;base64,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";
+
 		    barcode.onload = function () {
 		       // set the width and height to attributes
 	        var imageBox = {};
@@ -5625,18 +6809,23 @@
 	        barcode.setAttribute('style', 'margin: ' + marginTop +  'px auto; display: block; position: relative;');
 	        barcode.className = "drag";
 
+	        var newdiv = document.createElement('div');
+	        newdiv.innerHTML = "<p>Click and drag the QR code below to align for printing</p>";
+	   			
 	        box.appendChild(barcode);
+	        newdiv.appendChild(box);
+
 	        // the image has loaded, so put a div with it
-	        ninja.wallets.paperwallet.alignmentwidget.main.appendChild(box);
-  				box.setAttribute('onmousedown', 'ninja.wallets.paperwallet.alignmentwidget.mouse.down(event)');
-      		box.setAttribute('onmouseup', 'ninja.wallets.paperwallet.alignmentwidget.mouse.up(event)');
+	        opw.alignmentwidget.main.appendChild(newdiv);
+  				box.setAttribute('onmousedown', 'opw.alignmentwidget.mouse.down(event)');
+      		box.setAttribute('onmouseup', 'opw.alignmentwidget.mouse.up(event)');
 		    }
 			}
 		}
 	</script>
 
 	<script type="text/javascript">
-		ninja.wallets.paperwallet.designs = [
+		opw.designs = [
 			{name: 'Pre-printed', source: ''},
 			{name: '75RTUGA', source: 'img/wallet_designs/75RTUGA.jpg'},
 			{name: 'MBesser', source: 'img/wallet_designs/pw1-01.png'},
@@ -5647,54 +6836,81 @@
 	</script>
 
 	<script type="text/javascript">
-		ninja.wallets.paperwallet.ui = {
+		opw.ui = {
 			current_step: 0,
 
 			steps: [
 				{
-					//Start - Select number of pages
+					//0 - Start - Select number of pages
 					pre_actions: [],
-					html: "<div>Welcome to SafePaperWallet. Follow these easy steps to create your paper wallet. First select how many pages you want to print. There are four wallets per page. Press next when you've entered a number.</div><div align='center'><label id='paperlabelpagestogenerate'>Pages to generate:</label><input type='number' id='paperlimit' value=1 /><input type='button' onclick='ninja.wallets.paperwallet.ui.nextStep()' value='Next'/></div>",
+					html: "<div>Welcome to Open Paper Wallet. Follow these easy steps to create your paper wallet. First select how many pages you want to print. There are four wallets per page. Press next when you've entered a number.</div><div align='center'><label id='paperlabelpagestogenerate'>Pages to generate:</label><input type='number' id='paperlimit' value=1 /><input type='button' onclick='opw.ui.nextStep()' value='Next'/></div>",
 					post_actions: []
 				},
 				{
-					//Save the page number for later use. Then start seeding for key generation. Display notice.
-					pre_actions: [{fnc: ninja.wallets.paperwallet.savePageNumber, parameters: null}, {fnc: ninja.wallets.paperwallet.startSeed, parameters: null}],
+					//1 - Save the page number for later use. Then start seeding for key generation. Display notice.
+					pre_actions: [{fnc: opw.paperwallet.savePageNumber, parameters: null}, {fnc: opw.paperwallet.startSeed, parameters: null}],
 					html: '<div id="generate"><span id="generatelabelbitcoinaddress">Generating Bitcoin Addresses...</span><br /><span id="generatelabelmovemouse">MOVE your mouse around to add some extra randomness...</span><br /></div>',
 					post_actions: []
 				},
 				{
-					//Prep HTML for keys then generate keys.
+					//2 - Prep HTML for keys then generate keys.
 					pre_actions: [],
 					html: '<h4>Bitcoin Wallets</h4><div id="paperwalletdetailskeyarea"><div id="paperwalletdetailscolumns"><span class="aliasdetailcolumn">Alias</span><span class="addressdetailcolumn">Address</span><span class="privatekeydetailcolumn">Private Key</span></div></div><div id="paperwalletdetailskeys"></div><div id="paperwalletdetailscommands"><div id="papercommands" class="commands"><span id="paperwalletdetailsconfirm">'+
-					'<p style="float: left">The browser has safely generated your keys and Bitcoin addresses. However, you can also use your own private keys. Just replace the existing keys in the private key input fields. Once your done confirm your keys.</p><input type="button" value="Confirm Keys" onclick="ninja.wallets.paperwallet.confirm();" /></span></div></div>',
-					post_actions: [{fnc: ninja.wallets.paperwallet.startGeneration, parameters: null}]
+					'<p style="float: left">The browser has safely generated your keys and Bitcoin addresses. However, you can also use your own private keys. Just replace the existing keys in the private key input fields. Once your done confirm your keys.</p><p>You also have the option to <strong>encrypt your private keys</strong> using a passphrase. This is based on the <a href="https://en.bitcoin.it/wiki/BIP_0038" target="_blank">BIP-0038</a> specification. If you want to encrypt them, click "Confirm and Encrypt". You will be prompted for a passphrase.</p><input type="button" value="Confirm Keys" onclick="opw.paperwallet.confirm();" /> | <input type="button" value="Confirm and Encrypt Keys" onclick="opw.paperwallet.confirmAndEncrypt();" /></span></div></div>',
+					post_actions: [{fnc: opw.paperwallet.startGeneration, parameters: null}]
 				},
 				{
-					//Show Print Page - here the user can align printing and choose wallet designs
+					//3 - Encrypt Private Keys Using BIP-0038
+					pre_actions: [],
+					html: '<h4>Encrypt Private Keys</h4>'+
+								'<p>Enter a secure passphrase:</p>'+
+								'<p>The same passphrase will be used to encrypt all your private keys. Even though the encryption is secure, it should be noted that encrypting private keys for paperwallets should be used for personal use. Do not use the same passphrase if you are generating a lot of paperwallets.</p>'+
+								'<label>Enter Passphrase:</label><input type="password" name="bippassphrase" id="bippassphrase"/><br><label>Confirm Passphrase:</label><input type="password" name="bippassphraseconfirm" id="bippassphraseconfirm" /><br>'+
+								'<input type="button" value="Encrypt Keys" onclick="opw.paperwallet.startEncryption()">'+
+								'<br><div id="busyencrypting"></div>',
+					post_actions: [{fnc: function(){ if(!opw.paperwallet.encryptkeys) {opw.ui.nextStep();} }, parameters: null}] //If the user doesn't want to encrypt skip this step.
+				},
+				{
+					//4 - Select wallet design
+					pre_actions: [],
+					html:'<h4>Choose your wallet design</h4><p>Select a design for your paper wallet by clicking the notes below. The default option prints the wallet with no background. Thus, you can use pre-printed paper. Once you have selected your design press next.</p><p><input type="button" onclick="opw.ui.nextStep()" value="Next" /></p>'+
+								'<div id="paperwalletdesignoptions"></div><div style="clear:both;"></div>',
+					post_actions: [{fnc: opw.paperwallet.showDesigns, parameters: null}]
+				},
+				{
+					//5 - Show Print Page - here the user can align printing and choose wallet designs
 					pre_actions: [],
 					html: '<h4>How do you want to print your wallet?</h4>'+
 								'<div id="paperwalletdetailsarea">'+
 									'<div id="paperwalletdesignsarea">'+
-										'<div id="paperwalletdetailstext"><p>Select a design for your paper wallet by clicking the notes below. The default option prints the wallet with no background.</p>'+
-										'<p>Note: if you are using <strong>Firefox or Internet Explorer</strong>, you must change your browser print settings to allow for printing background images.</p>' +
+										'<div id="paperwalletdetailstext">'+
+										'<p>Note: if you are using <strong>Firefox or Internet Explorer</strong> and you do not see the backgrounds when you print, you must change your browser print settings to allow for printing background images.</p>' +
 										'<p>In Firefox: Page Setup -> Format & Options Tab under Options. Select "Print Background colours and images".</p>'+
 										'<p>In IE: On the Tools menu, click Internet Options, and then click the Advanced tab. In the Settings box, under Printing, click to select the "Print background colors and images" check box, and then click OK.</p></div>'+
-										'<div id="paperwalletprintcommands"><p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="ninja.wallets.paperwallet.toggleAlias()" checked="checked"/></span><br><span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span><span><label id="paperlabelhorizontaloffset"> Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span><div id="paperwalletdesignaligment"></div><div><input type="button" value="Print Wallet" onclick="ninja.wallets.paperwallet.build()" /><input type="button" value="Export Public Keys" onclick="ninja.wallets.paperwallet.exportToCSV()" /></div></p></div>'+
-										'<div id="paperwalletdesignoptions"></div>'+
+										'<div id="paperwalletprintcommands"><p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="opw.paperwallet.toggleAlias()" checked="checked"/></span><br><span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span><span><label id="paperlabelhorizontaloffset"> Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span><div id="paperwalletdesignaligment"></div><div><input type="button" value="Print Wallet" onclick="opw.paperwallet.build()" /><input type="button" value="Export Public Keys" onclick="opw.paperwallet.exportToCSV()" /></div></p></div>'+
 									'</div><div style="clear:both;">'+
 								'</div>',
-					post_actions: [{fnc: ninja.wallets.paperwallet.showDesigns, parameters: null}, {fnc: ninja.wallets.paperwallet.alignmentwidget.init, parameters: null}, {fnc: ninja.wallets.paperwallet.alignmentwidget.addImage, parameters: null}]
+					post_actions: [{fnc: opw.alignmentwidget.init, parameters: null}]
+				},
+				{
+					//6 - Decrypt keys
+					pre_actions: [],
+					html: '<h4>Decrypt your private keys</h4>'+
+								'<p>Enter your encrypted private key and passphrase and click "Decrypt Key".</p>'+
+								'<label>Encrypted Private Key: </label><input type="text" name="enckey" id="keytodecrypt" /><br><label>Passphrase: </label><input type="password" name="passphrase" id="passphrasetodecrypt" />'+
+								'<br><input type="button" value="Decrypt Key" onclick="opw.paperwallet.decryptKey()">'+
+								'<br><div id="busydecrypting"></div>',
+					post_actions: []
 				}
 			],
 
 			nextStep: function(nr){
 				//Goes to next step if null, otherwise moves to specified step
-				var current_step = ninja.wallets.paperwallet.ui.current_step;
-				if(nr == null) {nr = current_step+1; ninja.wallets.paperwallet.ui.current_step = ++current_step;}
-				else ninja.wallets.paperwallet.ui.current_step = nr;
+				var current_step = opw.ui.current_step;
+				if(nr == null) {nr = current_step+1; opw.ui.current_step = ++current_step;}
+				else opw.ui.current_step = nr;
 
-				var steps = ninja.wallets.paperwallet.ui.steps;
+				var steps = opw.ui.steps;
 
 				//Execute pre actions
 				if(steps[nr].pre_actions.length > 0){
@@ -5743,9 +6959,6 @@
 			window.print();
 		};
 	</script>
-
-	
-
 
 	<script type="text/javascript">
 	(function (ninja) {
