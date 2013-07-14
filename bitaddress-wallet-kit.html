@@ -4691,7 +4691,7 @@
 			this.version = Bitcoin.Address.networkVersion;
 		};
 
-		Bitcoin.Address.networkVersion = 0x00; // mainnet
+		Bitcoin.Address.networkVersion = 0x00; // mainnet -- DEFAULT is Bitcoin
 
 		/**
 		* Serialize this object as a standard Bitcoin address.
@@ -5068,7 +5068,7 @@
 				this.compressed = (this.compressed == undefined) ? !!ECKey.compressByDefault : this.compressed;
 			};
 
-			ECKey.privateKeyPrefix = 0x80; // mainnet 0x80    testnet 0xEF
+			ECKey.privateKeyPrefix = 0x80; // mainnet 0x80    testnet 0xEF - DEFAULT is BITCOIN
 
 			/**
 			* Whether public keys should be returned compressed by default.
@@ -5253,9 +5253,13 @@
 			// 51 characters base58, always starts with a '5'
 			ECKey.isWalletImportFormat = function (key) {
 				key = key.toString();
-				return (ECKey.privateKeyPrefix == 0x80) ?
+				var prefix = 5; //Default is bitcoin
+				if(ECKey.privateKeyPrefix == 0xb0) prefix = 6;
+				var keyregex = new RegExp("^"+prefix+"[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{50}$");
+				return keyregex.test(key);
+				/*return (ECKey.privateKeyPrefix == 0x80) ?
 							(/^5[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{50}$/.test(key)) :
-							(/^9[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{50}$/.test(key));
+							(/^9[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{50}$/.test(key));*/
 			};
 
 			// 52 characters base58
@@ -5799,12 +5803,6 @@
 					Bitcoin.ECKey.isMiniFormat(key)
 				);
 			},
-			isWalletImportFormat: function (key) {
-				key = key.toString();
-				return (ninja.testnetMode) ?
-							(/^9[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{50}$/.test(key)) :
-							(/^5[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{50}$/.test(key));
-			},
 			getECKeyFromAdding: function (privKey1, privKey2) {
 				var n = EllipticCurve.getSECCurveByName("secp256k1").getN();
 				var ecKey1 = new Bitcoin.ECKey(privKey1);
@@ -5991,24 +5989,24 @@
 			anyPrivateKeyToByteArray: function (privKey) {
 				var keyFormat = ninja.privateKey;
 				var bytes = null;
-				if (keyFormat.isWalletImportFormat(privKey)) {
+				if (Bitcoin.ECKey.isWalletImportFormat(privKey)) {
 					bytes = Bitcoin.Base58.decode(privKey);
 					bytes.shift();
 					bytes = bytes.slice(0, bytes.length - 4);
 				}
-				else if (keyFormat.isCompressedWalletImportFormat(privKey)) {
+				else if (Bitcoin.ECKey.isCompressedWalletImportFormat(privKey)) {
 					bytes = Bitcoin.Base58.decode(privKey);
 					bytes.shift();
 					bytes.pop();
 					bytes = bytes.slice(0, bytes.length - 4);
 				}
-				else if (keyFormat.isHexFormat(privKey)) {
+				else if (Bitcoin.ECKey.isHexFormat(privKey)) {
 					bytes = Crypto.util.hexToBytes(privKey);
 				}
-				else if (keyFormat.isBase64Format(privKey)) {
+				else if (Bitcoin.ECKey.isBase64Format(privKey)) {
 					bytes = Crypto.util.base64ToBytes(privKey);
 				}
-				else if (keyFormat.isMiniFormat(privKey)) {
+				else if (Bitcoin.ECKey.isMiniFormat(privKey)) {
 					bytes = Crypto.SHA256(privKey, { asBytes: true });
 				}
 
@@ -6222,6 +6220,7 @@
 	<script>
 		//Init Open Paper Wallet Functions
 		var opw = {paperwallet: {}, designs: {}, ui: {}, alignmentwidget: {}};
+		opw.currency = "bitcoin"; //default currency is bitcoin
 	</script>
 
 	<script type="text/javascript">
@@ -6241,6 +6240,22 @@
 			savePageNumber: function(){
 				var pages = document.getElementById("paperlimit").value;
 				opw.paperwallet.numPages = pages;
+			},
+
+			setCurrency: function(){
+				opw.currency = document.getElementById("selectcurrency").value;
+				if(opw.currency == 'bitcoin'){
+					Bitcoin.ECKey.privateKeyPrefix = 0x80;
+					Bitcoin.Address.networkVersion = 0x00;
+				}
+				if(opw.currency == 'litecoin'){
+					Bitcoin.ECKey.privateKeyPrefix = 0xb0;
+					Bitcoin.Address.networkVersion = 0x30;
+				}
+			},
+
+			showCurrentCurrency: function(){
+				document.getElementById(opw.currency+"option").setAttribute('selected', 'selected');
 			},
 
 			build: function () {
@@ -6844,20 +6859,20 @@
 				{
 					//0 - Start - Select number of pages
 					pre_actions: [],
-					html: "<div>Welcome to Open Paper Wallet. Follow these easy steps to create your paper wallet. First select how many pages you want to print. There are four wallets per page. Press next when you've entered a number.</div><div align='center'><label id='paperlabelpagestogenerate'>Pages to generate:</label><input type='number' id='paperlimit' value=1 /><input type='button' onclick='opw.ui.nextStep()' value='Next'/></div>",
-					post_actions: []
+					html: "<div>Welcome to Open Paper Wallet. Follow these easy steps to create your paper wallet. <br>First select which currency you want and how many pages you want to print. There are four wallets per page. Press next when you've entered a number.</div><div align='center'><label>Currency: </label><select id='selectcurrency' onchange='opw.paperwallet.setCurrency()' value><option id='bitcoinoption' value='bitcoin'>Bitcoin</option><option id='litecoinoption' value='litecoin'>Litecoin</option></select><label id='paperlabelpagestogenerate'>Pages to generate:</label><input type='number' id='paperlimit' value=1 /><input type='button' onclick='opw.ui.nextStep()' value='Next'/></div>",
+					post_actions: [{fnc: opw.paperwallet.showCurrentCurrency, parameters: null}]
 				},
 				{
 					//1 - Save the page number for later use. Then start seeding for key generation. Display notice.
 					pre_actions: [{fnc: opw.paperwallet.savePageNumber, parameters: null}, {fnc: opw.paperwallet.startSeed, parameters: null}],
-					html: '<div id="generate"><span id="generatelabelbitcoinaddress">Generating Bitcoin Addresses...</span><br /><span id="generatelabelmovemouse">MOVE your mouse around to add some extra randomness...</span><br /></div>',
+					html: '<div id="generate"><span id="generatelabelbitcoinaddress">Generating addresses...</span><br /><span id="generatelabelmovemouse">MOVE your mouse around to add some extra randomness...</span><br /></div>',
 					post_actions: []
 				},
 				{
 					//2 - Prep HTML for keys then generate keys.
 					pre_actions: [],
 					html: '<h4>Bitcoin Wallets</h4><div id="paperwalletdetailskeyarea"><div id="paperwalletdetailscolumns"><span class="aliasdetailcolumn">Alias</span><span class="addressdetailcolumn">Address</span><span class="privatekeydetailcolumn">Private Key</span></div></div><div id="paperwalletdetailskeys"></div><div id="paperwalletdetailscommands"><div id="papercommands" class="commands"><span id="paperwalletdetailsconfirm">'+
-					'<p style="float: left">The browser has safely generated your keys and Bitcoin addresses. However, you can also use your own private keys. Just replace the existing keys in the private key input fields. Once your done confirm your keys.</p><p>You also have the option to <strong>encrypt your private keys</strong> using a passphrase. This is based on the <a href="https://en.bitcoin.it/wiki/BIP_0038" target="_blank">BIP-0038</a> specification. If you want to encrypt them, click "Confirm and Encrypt". You will be prompted for a passphrase.</p><input type="button" value="Confirm Keys" onclick="opw.paperwallet.confirm();" /> | <input type="button" value="Confirm and Encrypt Keys" onclick="opw.paperwallet.confirmAndEncrypt();" /></span></div></div>',
+					'<p style="float: left">The browser has safely generated your keys and addresses. However, you can also use your own private keys. Just replace the existing keys in the private key input fields. Once your done confirm your keys.</p><p>You also have the option to <strong>encrypt your private keys</strong> using a passphrase. This is based on the <a href="https://en.bitcoin.it/wiki/BIP_0038" target="_blank">BIP-0038</a> specification. If you want to encrypt them, click "Confirm and Encrypt". You will be prompted for a passphrase.</p><input type="button" value="Confirm Keys" onclick="opw.paperwallet.confirm();" /> | <input type="button" value="Confirm and Encrypt Keys" onclick="opw.paperwallet.confirmAndEncrypt();" /></span></div></div>',
 					post_actions: [{fnc: opw.paperwallet.startGeneration, parameters: null}]
 				},
 				{
@@ -6899,9 +6914,9 @@
 					html: '<h4>Decrypt your private keys</h4>'+
 								'<p>Enter your encrypted private key and passphrase and click "Decrypt Key".</p>'+
 								'<label>Encrypted Private Key: </label><input type="text" name="enckey" id="keytodecrypt" /><br><label>Passphrase: </label><input type="password" name="passphrase" id="passphrasetodecrypt" />'+
-								'<br><input type="button" value="Decrypt Key" onclick="opw.paperwallet.decryptKey()">'+
+								'<br><label>Currency: </label><select id="selectcurrency" onchange="opw.paperwallet.setCurrency()"><option id="bitcoinoption" value="bitcoin">Bitcoin</option><option id="litecoinoption" value="litecoin">Litecoin</option></select><input type="button" value="Decrypt Key" onclick="opw.paperwallet.decryptKey()">'+
 								'<br><div id="busydecrypting"></div>',
-					post_actions: []
+					post_actions: [{fnc: opw.paperwallet.showCurrentCurrency, parameters: null}]
 				}
 			],
 
