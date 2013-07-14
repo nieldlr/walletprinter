@@ -5445,6 +5445,19 @@
 			#decryptkey{
 				float: right;
 			}
+
+			.decryptkeyinfo{
+				padding: 8px;
+				border: 1px solid #aaa;
+				height: 110px;
+			}
+
+			.decryptkeyqrcode{
+				display: block;
+				float: left;
+				width: 100px;
+				margin-right: 10px;
+			}
 			.footer_inner{
 				width:996px;
 				margin:25px auto;
@@ -5859,7 +5872,7 @@
 			},
 
 			//Thanks to pointbiz for this Javascript implementation
-			BIP38EncryptedKeyToWIFAsync: function (base58Encrypted, passphrase, callback) {
+			BIP38DecryptKeyAsync: function (base58Encrypted, passphrase, callback) {
 				var hex;
 				try {
 					hex = Bitcoin.Base58.decode(base58Encrypted);
@@ -5931,7 +5944,7 @@
 						return;
 					}
 					else{
-						callback(tmpkey.getBitcoinWalletImportFormat()); // callback using closure
+						callback(tmpkey); // callback using closure
 					}
 				};
 
@@ -6520,9 +6533,27 @@
 				var encryptedkey = document.getElementById('keytodecrypt').value;
 				var passphrase = document.getElementById('passphrasetodecrypt').value;
 
-				ninja.privateKey.BIP38EncryptedKeyToWIFAsync(encryptedkey, passphrase, function(eckey){
+				ninja.privateKey.BIP38DecryptKeyAsync(encryptedkey, passphrase, function(deckey){
 					document.getElementById('busydecrypting').innerHTML = '';
-					alert(eckey);
+					document.getElementById('decryptioninfo').innerHTML = 
+						"<div><h4>Key Details:</h4>"+
+						"<div class='decryptkeyinfo'><span class='decryptkeyqrcode'></span><span style='text-decoration: underline'>Address: </span><br><span class='decryptkeytext'>"+deckey.getBitcoinAddress()+ "</span></div>" +
+						"<div class='decryptkeyinfo'><span class='decryptkeyqrcode'></span><span style='text-decoration: underline'>Private Key - Wallet Import Format: </span><br><span class='decryptkeytext'>"+deckey.getBitcoinWalletImportFormat()+ "</span></div>" +
+						"<div class='decryptkeyinfo'><span class='decryptkeyqrcode'></span><span style='text-decoration: underline'>Private Key - Hex Format: </span><br><span class='decryptkeytext'>"+deckey.getBitcoinHexFormat()+ "</span></div>" +
+						"<div class='decryptkeyinfo'><span class='decryptkeyqrcode'></span><span style='text-decoration: underline'>Private Key - Base64 Format: </span><br><span class='decryptkeytext'>"+deckey.getBitcoinBase64Format()+ "</span></div>" +
+						"</div>";
+					var elements = document.getElementsByClassName('decryptkeyqrcode');
+					var data = document.getElementsByClassName('decryptkeytext');
+					for(var i=0; i<elements.length; i++){
+						try {
+							elements[i].innerHTML = "";
+							var value = data[i].innerHTML;
+							elements[i].appendChild(ninja.qrCode.createCanvas(value));
+						} catch (e) {
+							// for browsers that do not support canvas (IE8)
+							elements[i].innerHTML = ninja.qrCode.createTableHtml(value);
+						}
+					}
 				});
 			},
 
@@ -6915,7 +6946,7 @@
 								'<p>Enter your encrypted private key and passphrase and click "Decrypt Key".</p>'+
 								'<label>Encrypted Private Key: </label><input type="text" name="enckey" id="keytodecrypt" /><br><label>Passphrase: </label><input type="password" name="passphrase" id="passphrasetodecrypt" />'+
 								'<br><label>Currency: </label><select id="selectcurrency" onchange="opw.paperwallet.setCurrency()"><option id="bitcoinoption" value="bitcoin">Bitcoin</option><option id="litecoinoption" value="litecoin">Litecoin</option></select><input type="button" value="Decrypt Key" onclick="opw.paperwallet.decryptKey()">'+
-								'<br><div id="busydecrypting"></div>',
+								'<br><div id="busydecrypting"></div><div id="decryptioninfo"></div>',
 					post_actions: [{fnc: opw.paperwallet.showCurrentCurrency, parameters: null}]
 				}
 			],
