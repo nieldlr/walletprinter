@@ -6479,19 +6479,20 @@
 				if(passphrase1 == '' || passphrase2 == '') alert('Please enter a passphrase before encrypting.');
 				else{
 					if(passphrase1 == passphrase2){
-						document.getElementById('busyencrypting').innerHTML = "Encrypting... This may take a minute or two. Once it's done you'll be taken to the next step.";
-						var keys_remaining = opw.paperwallet.wallet_details.length-1;
-						var i=1;
-						for(;i<opw.paperwallet.wallet_details.length; i++){
-							(function(index){
-								var privatekey = opw.paperwallet.wallet_details[index].privateKeyWif;
-								ninja.privateKey.BIP38PrivateKeyToEncryptedKeyAsync(privatekey, passphrase1, false, function(eckey){
-									keys_remaining = --keys_remaining;
-									opw.paperwallet.wallet_details[index].privateKeyEnc = eckey;
-									if(keys_remaining == 0) opw.ui.nextStep();
-								});
-							})(i);
-						}
+						var total_keys = opw.paperwallet.wallet_details.length-1;
+						var index = 1;
+						encrypt(index);
+
+						function encrypt(index){
+							document.getElementById('busyencrypting').innerHTML = "Encrypting... This may take a minute or two. Encrypting key " + index + " of " + total_keys + ".";
+							var privatekey = opw.paperwallet.wallet_details[index].privateKeyWif;
+							ninja.privateKey.BIP38PrivateKeyToEncryptedKeyAsync(privatekey, passphrase1, false, function(eckey){
+								opw.paperwallet.wallet_details[index].privateKeyEnc = eckey;
+								index = ++index;
+								if(index == total_keys+1) opw.ui.nextStep();
+								else encrypt(index);
+							});
+						};
 					}
 					else{
 						alert('The passphrases do not match. Please type them again.');
