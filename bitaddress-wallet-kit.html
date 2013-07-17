@@ -5405,7 +5405,7 @@
 		.qrcodetddark { border-width: 0px; border-style: none; border-color: #0000ff; border-collapse: collapse; padding: 0; margin: 0; width: 2px; height: 2px; background-color: #000000; }
 		.qrcodetdlight { border-width: 0px; border-style: none; border-color: #0000ff; border-collapse: collapse; padding: 0; margin: 0; width: 2px; height: 2px; background-color: #ffffff; }
 
-		#wallets { display: none; }
+
 
 		@media screen
 		{
@@ -5441,6 +5441,8 @@
 				border: 1px dotted #888;
 				padding: 10px 25px;
 			}
+
+            #wallets { display: none; }
 
 			#decryptkey{
 				float: right;
@@ -5685,11 +5687,11 @@
 				float:left;
 				margin-right:20px;
 			}
-			.pubaddress span.notes{
-				display:block;
-				font-weight:bold;
-				font-size:0.8em;
-				margin-bottom:10px;
+			.pubaddress{
+                position: absolute; left: 1.5in; top: 0.185in;
+                border: 0; padding: 0.025in 0.05in; margin: 0;
+                width: 2.65in; height: 0.15in;
+                white-space: nowrap;
 			}
 			.pubaddressprefix{
 				display:block;
@@ -5718,7 +5720,7 @@
 			.logo,.footer,
 			.commands, #paperwalletdetailsarea, #wizard { display: none; }
 
-			body, div { margin: 0; padding: 0; -webkit-print-color-adjust: exact;}
+			body, div { margin: 0; padding: 0; -webkit-print-color-adjust: exact; font-family: "Geneva";}
 			#main { margin: 0; padding: 0; width: 100%; }
 			#wallets{ display: block; }
 			#decryptkey{display: none;}
@@ -5757,8 +5759,7 @@
 				position: absolute; left: 1.5in; top: 0.185in;
 				border: 0; padding: 0.025in 0.05in; margin: 0;
 				width: 2.65in; height: 0.15in;
-				font-size: 0.7em;
-				overflow: hidden;
+                white-space: nowrap;
 			}
 
 			#paperarea .keyarea .stub .qrcode_public {
@@ -5771,6 +5772,13 @@
 				border: 0; padding: 0.08in; margin: 0;
 				width: 0.84in; height: 0.84in;
 				display: block;
+                white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
+                white-space: -pre-wrap;      /* Opera 4-6 */
+                white-space: -o-pre-wrap;    /* Opera 7 */
+                white-space: pre-wrap;       /* css-3 */
+                word-wrap: break-word;       /* Internet Explorer 5.5+ */
+                word-break: break-all;
+                white-space: normal;
 			}
 			#paperarea .keyarea .stub .pubaddressprefix {
 				position: absolute; left: 5.937in; top: 1.185in;
@@ -6208,10 +6216,12 @@
 				for (var key in keyValuePair) {
 					var value = keyValuePair[key];
 					var elements = document.getElementsByClassName(key);
+
 					for (var i = 0; i < elements.length; i++) {
 						try {
 							elements[i].innerHTML = "";
-							elements[i].appendChild(ninja.qrCode.createCanvas(value, sizeMultiplier));
+                            if(opw.paperwallet.stubtype == 'plaintext' && (' ' + elements[i].className + ' ').indexOf(' ' + 'stub_private' + ' ') > -1) elements[i].innerHTML = value;
+                            else elements[i].appendChild(ninja.qrCode.createCanvas(value, sizeMultiplier));
 						} catch (e) {
 							// for browsers that do not support canvas (IE8)
 							elements[i].innerHTML = ninja.qrCode.createTableHtml(value);
@@ -6249,11 +6259,16 @@
 			invalid_keys: false, // variable to check if everything is good with keys
 			wallet_design_id: 0, // reference the chosen wallet design
 			encryptkeys: false, // does the user want to encrypt the keys or not
+            stubtype: 'qrcode', // how do you want to print the private key in the stub? default is qrcode
 
 			savePageNumber: function(){
 				var pages = document.getElementById("paperlimit").value;
 				opw.paperwallet.numPages = pages;
 			},
+
+            setStubType: function(){
+                opw.paperwallet.stubtype = document.getElementById('selectstubtype').value;
+            },
 
 			setCurrency: function(){
 				opw.currency = document.getElementById("selectcurrency").value;
@@ -6324,7 +6339,7 @@
 				}
 				else{
 					ninja.print(); //When generation finishes
-					document.getElementById("paperkeyarea").innerHTML = ''; //Clear the wallet area
+					//document.getElementById("paperkeyarea").innerHTML = ''; //Clear the wallet area
 				}
 			},
 
@@ -6379,7 +6394,7 @@
 			},
 
 			toggleAlias: function(){
-				opw.paperwallet.show_alias = opw.paperwallet.show_alias ? false : true;
+				opw.paperwallet.show_alias = !opw.paperwallet.show_alias;
 			},
 
 			exportToCSV: function(){
@@ -6604,14 +6619,14 @@
 									"<div class='qrcode_public" + i + " qrcode_public'></div>" +
 									"<div class='pubaddress'>" +
 										"<span class='notes'>Bitcoin address: </span>" +
-										"<span class='output alias alias" + i + "'></span><span class='output btcaddress btcaddress" + i + "'></span>" +
+										"<span class='addressandalias'><span class='output alias alias" + i + "'></span><span class='output btcaddress btcaddress" + i + "'></span></span>" +
 									"</div>" +
 									"<div class='pubaddressprefix'>" +
 										"<span class='output btcaddressprefix" + i + "'></span>" +
 									"</div>" +
 								"</div>" +
 								"<div class='private'>" +
-									"<div class='qrcode_private" + i + " qrcode_private'></div>" +
+									"<div class='qrcode_private" + i + " qrcode_private note_private'></div>" +
 								"</div>" +
 							"</div>" +
 							"<div class='stub'>" +
@@ -6622,7 +6637,7 @@
 									"</div>" +
 								"</div>" +
 								"<div class='private'>" +
-									"<div class='qrcode_private" + i + " qrcode_private'></div>" +
+									"<div class='qrcode_private" + i + " qrcode_private stub_private'></div>" +
 								"</div>" +
 							"</div>";
 				return walletHtml;
@@ -6664,7 +6679,7 @@
 					}
 				}
 
-				var keyValuePair = {};
+                var keyValuePair = {};
 				keyValuePair["qrcode_public" + idPostFix] = "bitcoin:"+bitcoinAddress+"?label="+alias[0]+alias[1]+alias[2];
 				keyValuePair["qrcode_private" + idPostFix] = privateKey;
 				ninja.qrCode.showQrCode(keyValuePair);
@@ -6934,8 +6949,11 @@
 										'<p>Note: if you are using <strong>Firefox or Internet Explorer</strong> and you do not see the backgrounds when you print, you must change your browser print settings to allow for printing background images.</p>' +
 										'<p>In Firefox: Page Setup -> Format & Options Tab under Options. Select "Print Background colours and images".</p>'+
 										'<p>In IE: On the Tools menu, click Internet Options, and then click the Advanced tab. In the Settings box, under Printing, click to select the "Print background colors and images" check box, and then click OK.</p></div>'+
-										'<div id="paperwalletprintcommands"><p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="opw.paperwallet.toggleAlias()" checked="checked"/></span><br><span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span><span><label id="paperlabelhorizontaloffset"> Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span><div id="paperwalletdesignaligment"></div><div><input type="button" value="Print Wallet" onclick="opw.paperwallet.build()" /><input type="button" value="Export Public Keys" onclick="opw.paperwallet.exportToCSV()" /></div></p></div>'+
-									'</div><div style="clear:both;">'+
+										'<div id="paperwalletprintcommands"><p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="opw.paperwallet.toggleAlias()" checked="checked"/><br>'+
+                                        '<label>Wallet Stub Private Key Style: </label><select id="selectstubtype" onchange="opw.paperwallet.setStubType()"><option id="qrcodeoption" value="qrcode">QR Code</option><option id="plaintextoption" value="plaintext">Plain Text</option></select>'+
+                                        '<br><br><span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span><span><label id="paperlabelhorizontaloffset"> Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span><div id="paperwalletdesignaligment"></div><div><input type="button" value="Print Wallet" onclick="opw.paperwallet.build()" /><input type="button" value="Export Public Keys" onclick="opw.paperwallet.exportToCSV()" /></div></p></div>'+
+
+                                    '</div><div style="clear:both;">'+
 								'</div>',
 					post_actions: [{fnc: opw.alignmentwidget.init, parameters: null}]
 				},
@@ -6996,6 +7014,21 @@
 
 			while (style.firstChild) style.removeChild(style.firstChild);
 
+            //Fit text into pubaddress if it overflows
+
+            document.getElementById("wallets").style.display = 'block';  //Make public so we can read widths.
+
+            var elements = document.getElementsByClassName("addressandalias");
+            for(var i = 0; i < elements.length; i++){
+                var pubaddress_string = document.getElementsByClassName('alias')[i].innerHTML.concat(document.getElementsByClassName('btcaddress')[i].innerHTML);
+                var length = pubaddress_string.length;
+                var constant = 64;
+                var increase = 1+((constant-length)/length) + ((constant-length)/constant);
+                var font_size = length*increase;
+                elements[i].style.fontSize = font_size+"%";
+            }
+            document.getElementById("wallets").removeAttribute('style');
+
 			var offsetx = -parseInt(document.getElementById("paperhorizontaloffset").value, 10);
 			var offsety = -parseInt(document.getElementById("paperverticaloffset").value, 10);
 			var css = '@media print { body { margin-top: '+offsety+'mm; margin-left: '+offsetx+'mm; } }';
@@ -7003,8 +7036,10 @@
 			if (style.styleSheet) style.styleSheet.cssText = css;
 			else style.appendChild(document.createTextNode(css));
 
+
 			window.print();
-		};
+            document.getElementById("paperkeyarea").innerHTML = '';
+        };
 	</script>
 
 	<script type="text/javascript">
