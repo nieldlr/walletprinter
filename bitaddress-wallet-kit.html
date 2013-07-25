@@ -8470,7 +8470,7 @@
 					pre_actions: [{fnc: opw.paperwallet.setCurrency, parameters: 'bitcoin'}],
 					html: '<h4>Retrieve coins from your paper wallet</h4>'+
 								'<p>Enter your private key (wallet import format) and which you address want to send your coins to. This feature requires you to be online. To prevent accidental loss of coins, <strong>all coins in your paper wallet</strong> will be sent to the provided address. The coins in the address must have <strong>at least one confirmation</strong> before being able to retrieve them.</p><p>NB: Only Bitcoin is supported at present.</p><p>Disclaimer: Use at your own risk. Open Paper Wallet cannot be held liable for coins that get lost if they are sent to the wrong address. So please double check your information.</p>'+
-								'<label>Private Key (Wallet Import Format): </label><input type="text" name="privkey" id="privatekeytosendcoinsfrom" value="5KTijAKhTb9i13PQbzaVHRLQYsWHk9CEY8m3o4teaKos2QfEmAR"/><br><label>Address (to send coins to): </label><input type="text" name="passphrase" id="addresstosendcoins" value="13Lkj4aZAB2kaGniFSJYdje32HDgZjxCDM" />'+
+								'<label>Private Key (Wallet Import Format): </label><input type="text" name="privkey" id="privatekeytosendcoinsfrom" /><br><label>Address (to send coins to): </label><input type="text" name="passphrase" id="addresstosendcoins" />'+
 								'<br><label>Fee: </label><input id="feeforsending" type="number" value="0.0005" /><br> <input type="button" value="Send Coins" onclick="opw.paperwallet.spendAllCoinsFromWIFPrivateKeyToAddress();">',
 					post_actions: []
 				}
