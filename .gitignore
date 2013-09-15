@@ -1,3 +1,5 @@
 .DS_Store
 .idea/
 node-webkit.app
+node_modules
+lib/
