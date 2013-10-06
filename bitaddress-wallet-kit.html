@@ -11204,8 +11204,9 @@
 					for (var i = 0; i < elements.length; i++) {
 						try {
 							elements[i].innerHTML = "";
-                            if(opw.paperwallet.stubtype == 'plaintext' && (' ' + elements[i].className + ' ').indexOf(' ' + 'stub_private' + ' ') > -1) elements[i].innerHTML = value;
-                            else elements[i].appendChild(ninja.qrCode.createCanvas(value, sizeMultiplier));
+              if(opw.paperwallet.stubtype == 'plaintext' && (' ' + elements[i].className + ' ').indexOf(' ' + 'stub_private' + ' ') > -1) elements[i].innerHTML = value;
+              else elements[i].appendChild(ninja.qrCode.createCanvas(value, sizeMultiplier));
+              //elements[i].appendChild(ninja.qrCode.createCanvas(value, sizeMultiplier));
 						} catch (e) {
 							// for browsers that do not support canvas (IE8)
 							elements[i].innerHTML = ninja.qrCode.createTableHtml(value);
@@ -11243,7 +11244,7 @@
 			invalid_keys: false, // variable to check if everything is good with keys
 			wallet_design_id: 0, // reference the chosen wallet design
 			encryptkeys: false, // does the user want to encrypt the keys or not
-            stubtype: 'qrcode', // how do you want to print the private key in the stub? default is qrcode
+      stubtype: 'qrcode', // how do you want to print the private key in the stub? default is qrcode
 
 			savePageNumber: function(){
 				var pages = document.getElementById("paperlimit").value;
@@ -11942,15 +11943,7 @@
 		}
 	</script>
 
-	<script type="text/javascript">
-		opw.designs = [
-			{name: 'Pre-printed', source: ''},
-			{name: '75RTUGA', source: 'img/wallet_designs/75RTUGA.jpg'},
-			{name: 'MBesser', source: 'img/wallet_designs/pw1-01.png'},
-			{name: 'Timbo-Green', source: 'img/wallet_designs/timbo-green.svg'},
-			{name: 'Timbo-Grey', source: 'img/wallet_designs/timbo-grey.svg'},
-			{name: 'Canton', source: 'img/wallet_designs/canton.jpg'}
-		];
+	<script type="text/javascript" src='js/walletdesigns.js'>
 	</script>
 
 	<script type="text/javascript">
@@ -12069,7 +12062,7 @@
 		ninja.print = function () {
 
 			var doc = new jsPDF('p', 'in');
-			doc.setFont('helvetica');
+			doc.setFont('courier');
 			doc.setFontSize(12);
 			doc.setLineWidth(0.01);
 
@@ -12082,7 +12075,6 @@
 
 			for(var p = 0; p < opw.paperwallet.numPages; p++){
 				doc.setFontSize(5);
-				doc.setLineWidth(0.01);
 				for(var i=0; i<4; i++){
 					var alias = opw.paperwallet.wallet_details[i+1+p*4].alias;
 					var bitcoinAddress = opw.paperwallet.wallet_details[i+1+p*4].bitcoinAddress;
@@ -12093,51 +12085,86 @@
 					var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
 					var alias_short = alias[0].substring(0,1)+alias[1].substring(0,1)+alias[2].substring(0,1);
 
-					doc.rect(pageMargin, pageMargin+i*2.5, walletLength, 2.5); //Outside Border
+					if(opw.paperwallet.wallet_design_id != 0){ 
+						// Print with graphic
+						doc.addImage(opw.designs[opw.paperwallet.wallet_design_id].dataurl, 'JPEG', pageMargin, pageMargin+i*2.5, walletLength, 2.5);
+					}
+					else{
+						// Clean template
+						doc.rect(pageMargin, pageMargin+i*2.5, walletLength, 2.5); //Outside Border
+						// Note
+						doc.rect(pageMargin+0.25, pageMargin+0.185+i*2.5, 1, 1); // Border - Qr Code Public
+						doc.rect(pageMaxWidth-pageMargin-2-0.94, pageMargin+1.3+i*2.5, 1, 1); // Border - Qr Code Private
+						doc.rect(pageMargin+1.45, pageMargin+0.185+i*2.5, 2.65, 0.2); // Border - Pub Address
+						// Stub
+						doc.rect(pageMaxWidth-pageMargin-0.188-1, pageMargin+0.185+i*2.5, 1, 1); // Border - Qr Code Public 
+						doc.rect(pageMaxWidth-pageMargin-0.188-1, pageMargin+1.3+i*2.5, 1, 1);  // Border - Qr Code Private
+						doc.rect(pageMargin+5.75, pageMargin+0.185+i*2.50, 0.2, 1); // Border - Stub Info
+					} 
 
+					// Print Wallet Details
 					// Note
 					// Qr Code - Public
-					doc.rect(pageMargin+0.25, pageMargin+0.185+i*2.5, 1, 1); // Border
 					var qr_code = ninja.qrCode.createCanvas(bitcoinAddress);
 					var qrcode_pubaddr = qr_code.toDataURL('image/jpeg');
 					doc.addImage(qrcode_pubaddr, 'JPEG', pageMargin+0.25+0.1, pageMargin+0.185+i*2.5+0.1, 0.8, 0.8); //Print
 
 					// Qr Code - Private
-					doc.rect(pageMaxWidth-pageMargin-2-0.94, pageMargin+1.3+i*2.5, 1, 1); // Border
 					var qr_code = ninja.qrCode.createCanvas(privateKey);
 					var qrcode_priv = qr_code.toDataURL('image/jpeg');
 					doc.addImage(qrcode_priv, 'JPEG', pageMaxWidth-pageMargin-2-0.94+0.1, pageMargin+1.3+i*2.5+0.1, 0.8, 0.8); //Print
 
 					// Pub Address
-					doc.rect(pageMargin+1.5, pageMargin+0.185+i*2.5, 2.7, 0.2); // Border
 					if(opw.paperwallet.show_alias) var text = alias_full+ ": "+bitcoinAddress;
 					else var text = bitcoinAddress;
-					doc.text(pageMargin+1.5+0.1, pageMargin+0.185+i*2.5+0.13, text); // Print
+					doc.text(pageMargin+1.45+0.05, pageMargin+0.185+i*2.5+0.13, text); // Print
 						
 					// Stub
 					// Qr Code Public
-					doc.rect(pageMaxWidth-pageMargin-0.1875-1, pageMargin+0.185+i*2.5, 1, 1); // Border
-					doc.addImage(qrcode_pubaddr, 'JPEG', pageMaxWidth-pageMargin-0.1875-1+0.1, pageMargin+0.185+i*2.5+0.1, 0.8, 0.8); // Print
+					doc.addImage(qrcode_pubaddr, 'JPEG', pageMaxWidth-pageMargin-0.1875-1+0.11, pageMargin+0.185+i*2.5+0.1, 0.8, 0.8); // Print
 
 					// Qr Code Private
-					doc.rect(pageMaxWidth-pageMargin-0.1875-1, pageMargin+1.3+i*2.5, 1, 1);  // Border
-
 					// TODO - Print text instead of QRCode if option is on.
-					doc.addImage(qrcode_priv, 'JPEG', pageMaxWidth-pageMargin-0.1875-1+0.1, pageMargin+1.3+i*2.5+0.1, 0.8, 0.8); // Print
+					if(opw.paperwallet.stubtype == 'plaintext') {
+						doc.setFontSize(8);
+						var lines = doc.splitTextToSize(privateKey, 0.8);
+						doc.text(pageMaxWidth-pageMargin-0.1875-1+0.11, pageMargin+1.3+i*2.5+0.15, lines); // Print
+						doc.setFontSize(5);
+					}
+					else doc.addImage(qrcode_priv, 'JPEG', pageMaxWidth-pageMargin-0.1875-1+0.11, pageMargin+1.3+i*2.5+0.1, 0.8, 0.8); // Print
 
 					// Stub info
-					doc.rect(pageMargin+5.7, pageMargin+0.185+i*2.5, 0.2, 1); // Border
 					if(opw.paperwallet.show_alias) var text = alias_short+ "~"+ addressPrefix;
 					else var text = addressPrefix;
 
 					var lines = doc.splitTextToSize(text, 0.01);
-					doc.text(pageMargin+5.7+0.08, pageMargin+0.185+i*2.5+0.03, lines); // Print
+					doc.text(pageMargin+5.75+0.08, pageMargin+0.185+i*2.50+0.03, lines); // Print
 				}
 				
 				if(p+1 < opw.paperwallet.numPages) doc.addPage();
 			}
 			
-			doc.save();
+			doc.save('openpaperwallet.pdf');
+
+			function getBase64Image(img) {
+			    // Create an empty canvas element
+			    var c = document.createElement("canvas");
+			    c.width = img.width;
+			    c.height = img.height;
+
+			    // Copy the image contents to the canvas
+			    var ctx = c.getContext("2d");
+			    ctx.drawImage(img, 0, 0);
+
+			    // Get the data-URL formatted image
+			    // Firefox supports PNG and JPEG. You could check img.src to
+			    // guess the original format, but be aware the using "image/jpg"
+			    // will re-encode the image.
+			    var dataURL = c.toDataURL("image/jpeg");
+			    return dataURL;
+
+			    //return dataURL.replace(/^data:image\/(png|jpg);base64,/, "");
+			}
 
 			/*var style = document.getElementById("customprintstyle");
 			if (!style) {
