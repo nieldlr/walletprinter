@@ -10403,6 +10403,10 @@
 			p{
 				font-size: 0.8em;
 			}
+
+			h4{
+				margin-top: 0px;
+			}
 			#main{
 				min-height:500px;
 				width:996px;
@@ -10413,10 +10417,40 @@
 				padding: 15px;
 			}
 			#wizard{
-				margin-top: 75px;
 				border-radius: 10px;
-				border: 1px dotted #888;
-				padding: 10px 25px;
+				
+				padding: 10px 10px;
+			}
+
+			#steps-ui{
+				clear:both;
+				margin-left: -38px;
+			}
+
+			#steps-ui > ul > li{
+				list-style-type: none;
+				display: inline-block;
+				width: 120px;
+				opacity: 0.4;
+				margin-top: 20px;
+				margin-bottom: 5px;
+				padding: 10px 20px;
+				background-color: #20AFC9;
+				border-radius: 4px 4px 4px 4px;
+				color: white;
+			}
+
+			#steps-ui > ul > li > div{
+				margin-top: 5px;
+				
+			}
+
+			#steps-ui > ul > li.active-step{
+				opacity: 1;
+			}
+
+			.step-title{
+				font-size: 11px;
 			}
 
       #wallets { display: none; }
@@ -10479,12 +10513,16 @@
 			}
 
 			#paperwalletprintcommands{
+				padding-top: 55px;
 				width: 430px;
 				font-size: 0.8em;
+				text-align: center;
+				margin: 0 auto;
 			}
 			#paperwalletdetailstext{
 				float: right;
 				width: 490px;
+				margin-top: -50px;
 			}
 
 			#barcode-box {
@@ -10784,6 +10822,16 @@
 		<a href="/"><h1 class="logo">Open Paper Wallet</h1></a>
 		<div id="decryptkey"><input type="button" value="Decrypt Keys" onclick="opw.ui.nextStep(6)" /></div>
 		<div id="retrievecoins"><input type="button" value="Retrieve Coins from Paper Wallet" onclick="opw.ui.nextStep(7)" /></div>
+		<div id="steps-ui">
+			<ul>
+				<li id="step1" class="active-step">Step 1<div class="step-title">Select Currency</div></li>
+				<li id="step2">Step 2<div class="step-title">Generate Addresses</div></li>
+				<li id="step3">Step 3<div class="step-title">Confirm Keys</div></li>
+				<li id="step35">Step 3.5<div class="step-title">Encrypt Keys</div></li>
+				<li id="step4">Step 4<div class="step-title">Select Wallet Design</div></li>
+				<li id="step5">Step 5<div class="step-title">Save & Print</div></li>
+			</ul>
+		</div>
 		<div id="wizard">
 		</div>
 
@@ -11953,18 +12001,21 @@
 			steps: [
 				{
 					//0 - Start - Select number of pages
+					step_name: "Choose currency and select total pages",
 					pre_actions: [],
 					html: "<div>Welcome to Open Paper Wallet. Follow these easy steps to create your paper wallet. <br>First select which currency you want and how many pages you want to print. There are four wallets per page. Press next when you've entered a number.</div><div align='center'><label>Currency: </label><select id='selectcurrency' onchange='opw.paperwallet.setCurrency()' value><option id='bitcoinoption' value='bitcoin'>Bitcoin</option><option id='litecoinoption' value='litecoin'>Litecoin</option></select><label id='paperlabelpagestogenerate'>Pages to generate:</label><input type='number' id='paperlimit' value=1 /><input type='button' onclick='opw.ui.nextStep()' value='Next'/></div>",
 					post_actions: [{fnc: opw.paperwallet.showCurrentCurrency, parameters: null}]
 				},
 				{
 					//1 - Save the page number for later use. Then start seeding for key generation. Display notice.
+					step_name: "Generate addresses",
 					pre_actions: [{fnc: opw.paperwallet.savePageNumber, parameters: null}, {fnc: opw.paperwallet.startSeed, parameters: null}],
 					html: '<div id="generate"><span id="generatelabelbitcoinaddress">Generating addresses...</span><br /><span id="generatelabelmovemouse">MOVE your mouse around to add some extra randomness...</span><br /></div>',
 					post_actions: []
 				},
 				{
 					//2 - Prep HTML for keys then generate keys.
+					step_name: "Confirm Keys",
 					pre_actions: [],
 					html: '<h4>Bitcoin Wallets</h4><div id="paperwalletdetailskeyarea"><div id="paperwalletdetailscolumns"><span class="aliasdetailcolumn">Alias</span><span class="addressdetailcolumn">Address</span><span class="privatekeydetailcolumn">Private Key</span></div></div><div id="paperwalletdetailskeys"></div><div id="paperwalletdetailscommands"><div id="papercommands" class="commands"><span id="paperwalletdetailsconfirm">'+
 					'<p style="float: left">The browser has safely generated your keys and addresses. However, you can also use your own private keys. Just replace the existing keys in the private key input fields. Once your done confirm your keys.</p><p>You also have the option to <strong>encrypt your private keys</strong> using a passphrase. This is based on the <a href="https://en.bitcoin.it/wiki/BIP_0038" target="_blank">BIP-0038</a> specification. If you want to encrypt them, click "Confirm and Encrypt". You will be prompted for a passphrase.</p><input type="button" value="Confirm Keys" onclick="opw.paperwallet.confirm();" /> | <input type="button" value="Confirm and Encrypt Keys" onclick="opw.paperwallet.confirmAndEncrypt();" /></span></div></div>',
@@ -11972,6 +12023,7 @@
 				},
 				{
 					//3 - Encrypt Private Keys Using BIP-0038
+					step_name: "Encrypt Keys",
 					pre_actions: [],
 					html: '<h4>Encrypt Private Keys</h4>'+
 								'<p>Enter a secure passphrase:</p>'+
@@ -11983,6 +12035,7 @@
 				},
 				{
 					//4 - Select wallet design
+					step_name: "Select Wallet Design",
 					pre_actions: [],
 					html:'<h4>Choose your wallet design</h4><p>Select a design for your paper wallet by clicking the notes below. The default option prints the wallet with no background. Thus, you can use pre-printed paper. Once you have selected your design press next.</p><p><input type="button" onclick="opw.ui.nextStep()" value="Next" /></p>'+
 								'<div id="paperwalletdesignoptions"></div><div style="clear:both;"></div>',
@@ -11990,24 +12043,22 @@
 				},
 				{
 					//5 - Show Print Page - here the user can align printing and choose wallet designs
+					step_name: "Save & Print",
 					pre_actions: [],
-					html: '<h4>How do you want to print your wallet?</h4>'+
+					html: 
 								'<div id="paperwalletdetailsarea">'+
 									'<div id="paperwalletdesignsarea">'+
-										'<div id="paperwalletdetailstext">'+
-										'<p>Note: if you are using <strong>Firefox or Internet Explorer</strong> and you do not see the backgrounds when you print, you must change your browser print settings to allow for printing background images.</p>' +
-										'<p>In Firefox: Page Setup -> Format & Options Tab under Options. Select "Print Background colours and images".</p>'+
-										'<p>In IE: On the Tools menu, click Internet Options, and then click the Advanced tab. In the Settings box, under Printing, click to select the "Print background colors and images" check box, and then click OK.</p></div>'+
-										'<div id="paperwalletprintcommands"><p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="opw.paperwallet.toggleAlias()" checked="checked"/><br>'+
+										'<div id="paperwalletprintcommands"><h4>How do you want to print your wallet?</h4><p><span><label id="paperlabelaliasoption">Show Aliases on Paper</label><input type="checkbox" id="papergeneratealias" onchange="opw.paperwallet.toggleAlias()" checked="checked"/><br>'+
                                         '<label>Wallet Stub Private Key Style: </label><select id="selectstubtype" onchange="opw.paperwallet.setStubType()"><option id="qrcodeoption" value="qrcode">QR Code</option><option id="plaintextoption" value="plaintext">Plain Text</option></select>'+
-                                        '<br><br><span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span><span><label id="paperlabelhorizontaloffset"> Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span><div id="paperwalletdesignaligment"></div><div><input type="button" value="Print Wallet" onclick="opw.paperwallet.build()" /><input type="button" value="Export Public Keys" onclick="opw.paperwallet.exportToCSV()" /></div></p></div>'+
+                                        '<br><br><!-- <span><label id="paperlabelverticaloffset">Vertical offset:</label> <input type="number" value="0" step="1" id="paperverticaloffset" />mm</span><span><label id="paperlabelhorizontaloffset"> Horizontal offset:</label> <input type="number" value="0" step="1" id="paperhorizontaloffset" />mm</span>--><div id="paperwalletdesignaligment"></div><div><input type="button" value="Print Wallet" onclick="ninja.print()" /><input type="button" value="Export Public Keys" onclick="opw.paperwallet.exportToCSV()" /></div></p></div>'+
 
                                     '</div><div style="clear:both;">'+
 								'</div>',
-					post_actions: [{fnc: opw.alignmentwidget.init, parameters: null}]
+					post_actions: []
 				},
 				{
 					//6 - Decrypt keys
+					step_name: null,
 					pre_actions: [],
 					html: '<h4>Decrypt your private keys</h4>'+
 								'<p>Enter your encrypted private key and passphrase and click "Decrypt Key".</p>'+
@@ -12018,6 +12069,7 @@
 				},
 				{
 					//7 - Empty Coins
+					step_name: null,
 					pre_actions: [{fnc: opw.paperwallet.setCurrency, parameters: 'bitcoin'}],
 					html: '<h4>Retrieve coins from your paper wallet</h4>'+
 								'<p>Enter your private key (wallet import format) and which you address want to send your coins to. This feature requires you to be online. To prevent accidental loss of coins, <strong>all coins in your paper wallet</strong> will be sent to the provided address. The coins in the address must have <strong>at least one confirmation</strong> before being able to retrieve them.</p><p>NB: Only Bitcoin is supported at present.</p><p>Disclaimer: Use at your own risk. Open Paper Wallet cannot be held liable for coins that get lost if they are sent to the wrong address. So please double check your information.</p>'+
@@ -12054,6 +12106,15 @@
 						steps[nr].post_actions[i].fnc(steps[nr].post_actions[i].parameters);
 					}
 				}
+
+				// Render and Update progress bar
+				var steps_progress = document.querySelector('#steps-ui > ul > li.active-step');
+				if(opw.ui.current_step != 0 && opw.ui.current_step < 5){
+					steps_progress.setAttribute('class', '');
+					steps_progress.nextElementSibling.setAttribute('class', 'active-step');
+				}
+//				steps_progress.children[0].textContent = steps[opw.ui.current_step].step_name; 
+
 			}
 		}
 	</script>
@@ -12085,21 +12146,23 @@
 					var alias_full = alias[0] + " " + alias[1] + " " + alias[2];
 					var alias_short = alias[0].substring(0,1)+alias[1].substring(0,1)+alias[2].substring(0,1);
 
+					var heightOffset = i*2.5;
+
 					if(opw.paperwallet.wallet_design_id != 0){ 
 						// Print with graphic
-						doc.addImage(opw.designs[opw.paperwallet.wallet_design_id].dataurl, 'JPEG', pageMargin, pageMargin+i*2.5, walletLength, 2.5);
+						doc.addImage(opw.designs[opw.paperwallet.wallet_design_id].dataurl, 'JPEG', pageMargin, pageMargin+heightOffset, walletLength, 2.5);
 					}
 					else{
 						// Clean template
-						doc.rect(pageMargin, pageMargin+i*2.5, walletLength, 2.5); //Outside Border
+						doc.rect(pageMargin, pageMargin+heightOffset, walletLength, 2.5); //Outside Border
 						// Note
-						doc.rect(pageMargin+0.25, pageMargin+0.185+i*2.5, 1, 1); // Border - Qr Code Public
-						doc.rect(pageMaxWidth-pageMargin-2-0.94, pageMargin+1.3+i*2.5, 1, 1); // Border - Qr Code Private
-						doc.rect(pageMargin+1.45, pageMargin+0.185+i*2.5, 2.65, 0.2); // Border - Pub Address
+						doc.rect(pageMargin+0.25, pageMargin+0.185+heightOffset, 0.97, 1); // Border - Qr Code Public
+						doc.rect(pageMaxWidth-pageMargin-2-0.94, pageMargin+1.3+heightOffset, 1, 1); // Border - Qr Code Private
+						doc.rect(pageMargin+1.45, pageMargin+0.185+heightOffset, 2.65, 0.2); // Border - Pub Address
 						// Stub
-						doc.rect(pageMaxWidth-pageMargin-0.188-1, pageMargin+0.185+i*2.5, 1, 1); // Border - Qr Code Public 
-						doc.rect(pageMaxWidth-pageMargin-0.188-1, pageMargin+1.3+i*2.5, 1, 1);  // Border - Qr Code Private
-						doc.rect(pageMargin+5.75, pageMargin+0.185+i*2.50, 0.2, 1); // Border - Stub Info
+						doc.rect(pageMaxWidth-pageMargin-0.188-1, pageMargin+0.185+heightOffset, 1, 1); // Border - Qr Code Public 
+						doc.rect(pageMaxWidth-pageMargin-0.188-1, pageMargin+1.3+heightOffset, 1, 1);  // Border - Qr Code Private
+						doc.rect(pageMargin+5.75, pageMargin+0.185+heightOffset, 0.2, 1); // Border - Stub Info
 					} 
 
 					// Print Wallet Details
@@ -12107,38 +12170,38 @@
 					// Qr Code - Public
 					var qr_code = ninja.qrCode.createCanvas(bitcoinAddress);
 					var qrcode_pubaddr = qr_code.toDataURL('image/jpeg');
-					doc.addImage(qrcode_pubaddr, 'JPEG', pageMargin+0.25+0.1, pageMargin+0.185+i*2.5+0.1, 0.8, 0.8); //Print
+					doc.addImage(qrcode_pubaddr, 'JPEG', pageMargin+0.25+0.08, pageMargin+0.185+heightOffset+0.1, 0.8, 0.8); //Print
 
 					// Qr Code - Private
 					var qr_code = ninja.qrCode.createCanvas(privateKey);
 					var qrcode_priv = qr_code.toDataURL('image/jpeg');
-					doc.addImage(qrcode_priv, 'JPEG', pageMaxWidth-pageMargin-2-0.94+0.1, pageMargin+1.3+i*2.5+0.1, 0.8, 0.8); //Print
+					doc.addImage(qrcode_priv, 'JPEG', pageMaxWidth-pageMargin-2-0.94+0.1, pageMargin+1.3+heightOffset+0.1, 0.8, 0.8); //Print
 
 					// Pub Address
 					if(opw.paperwallet.show_alias) var text = alias_full+ ": "+bitcoinAddress;
 					else var text = bitcoinAddress;
-					doc.text(pageMargin+1.45+0.05, pageMargin+0.185+i*2.5+0.13, text); // Print
+					doc.text(pageMargin+1.45+0.05, pageMargin+0.185+heightOffset+0.13, text); // Print
 						
 					// Stub
 					// Qr Code Public
-					doc.addImage(qrcode_pubaddr, 'JPEG', pageMaxWidth-pageMargin-0.1875-1+0.11, pageMargin+0.185+i*2.5+0.1, 0.8, 0.8); // Print
+					doc.addImage(qrcode_pubaddr, 'JPEG', pageMaxWidth-pageMargin-0.1875-1+0.11, pageMargin+0.185+heightOffset+0.1, 0.8, 0.8); // Print
 
 					// Qr Code Private
 					// TODO - Print text instead of QRCode if option is on.
 					if(opw.paperwallet.stubtype == 'plaintext') {
 						doc.setFontSize(8);
 						var lines = doc.splitTextToSize(privateKey, 0.8);
-						doc.text(pageMaxWidth-pageMargin-0.1875-1+0.11, pageMargin+1.3+i*2.5+0.15, lines); // Print
+						doc.text(pageMaxWidth-pageMargin-0.1875-1+0.11, pageMargin+1.3+heightOffset+0.15, lines); // Print
 						doc.setFontSize(5);
 					}
-					else doc.addImage(qrcode_priv, 'JPEG', pageMaxWidth-pageMargin-0.1875-1+0.11, pageMargin+1.3+i*2.5+0.1, 0.8, 0.8); // Print
+					else doc.addImage(qrcode_priv, 'JPEG', pageMaxWidth-pageMargin-0.1875-1+0.11, pageMargin+1.3+heightOffset+0.1, 0.8, 0.8); // Print
 
 					// Stub info
 					if(opw.paperwallet.show_alias) var text = alias_short+ "~"+ addressPrefix;
 					else var text = addressPrefix;
 
 					var lines = doc.splitTextToSize(text, 0.01);
-					doc.text(pageMargin+5.75+0.08, pageMargin+0.185+i*2.50+0.03, lines); // Print
+					doc.text(pageMargin+5.75+0.08, pageMargin+0.185+heightOffset+0.03, lines); // Print
 				}
 				
 				if(p+1 < opw.paperwallet.numPages) doc.addPage();
@@ -12165,43 +12228,6 @@
 
 			    //return dataURL.replace(/^data:image\/(png|jpg);base64,/, "");
 			}
-
-			/*var style = document.getElementById("customprintstyle");
-			if (!style) {
-				var style = document.createElement("style");
-				style.setAttribute("id", "customprintstyle");
-				style.type = "text/css";
-				var head = document.getElementsByTagName("head")[0];
-				head.appendChild(style);
-			}
-
-			while (style.firstChild) style.removeChild(style.firstChild);
-
-            //Fit text into pubaddress if it overflows
-
-            document.getElementById("wallets").style.display = 'block';  //Make public so we can read widths.
-
-            var elements = document.getElementsByClassName("addressandalias");
-            for(var i = 0; i < elements.length; i++){
-                var pubaddress_string = document.getElementsByClassName('alias')[i].innerHTML.concat(document.getElementsByClassName('btcaddress')[i].innerHTML);
-                var length = pubaddress_string.length;
-                var constant = 64;
-                var increase = 1+((constant-length)/length) + ((constant-length)/constant);
-                var font_size = length*increase;
-                elements[i].style.fontSize = font_size+"%";
-            }
-            document.getElementById("wallets").removeAttribute('style');
-
-			var offsetx = -parseInt(document.getElementById("paperhorizontaloffset").value, 10);
-			var offsety = -parseInt(document.getElementById("paperverticaloffset").value, 10);
-			var css = '@media print { body { margin-top: '+offsety+'mm; margin-left: '+offsetx+'mm; } }';
-
-			if (style.styleSheet) style.styleSheet.cssText = css;
-			else style.appendChild(document.createTextNode(css));
-
-
-			window.print();
-            document.getElementById("paperkeyarea").innerHTML = '';*/
     };
 	</script>
 
